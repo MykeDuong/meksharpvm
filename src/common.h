@@ -1,8 +1,10 @@
-#ifndef meksharpvm_common_h
-#define meksharpvm_common_h
+#ifndef MVM_COMMON_H
+#define MVM_COMMON_H
 
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#define DEBUG_TRACE_EXECUTION
 
 #endif 
