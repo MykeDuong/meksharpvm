@@ -1,4 +1,4 @@
-exec = mks.out
+exec = mkv.out
 sources = $(wildcard src/*.c)
 test_file = ./samples/test.meks
 objects = $(sources:.c=.o)
@@ -18,7 +18,7 @@ debug:
 
 install:
 	make
-	cp ./mks.out /usr/local/bin/mks
+	cp ./mkv.out /usr/local/bin/mks
 
 clean:
 	-rm *.out
