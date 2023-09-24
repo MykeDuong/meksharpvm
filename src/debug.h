@@ -1,10 +1,9 @@
-#ifndef MVM_DEBUG_H
-#define MVM_DEBUG_H
+#ifndef MEKVM_DEBUG_H
+#define MEKVM_DEBUG_H
 
-#include "chunk.h"
+#include "bytechunk.h"
 
-void disassembleChunk(Chunk* chunk, const char* name);
-int disassembleInstruction(Chunk* chunk, int offset);
-
+void disassembleByteChunk(ByteChunk* chunk, const char* name);
+int disassembleInstruction(ByteChunk* chunk, int offset);
 
 #endif 
