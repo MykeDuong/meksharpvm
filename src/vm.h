@@ -2,11 +2,18 @@
 #define MEKVM_VM_H
 
 #include "bytechunk.h"
-#include <stdint.h>
+#include "value.h"
+
+#define STACK_MAX 256
 
 typedef struct {
   ByteChunk* chunk;
   uint8_t* ip;
+
+  // Stack 
+  Value* stack;
+  int stackCapacity;
+  Value* stackTop;
 } VirtualMachine;
 
 typedef enum {
@@ -19,7 +26,8 @@ typedef enum {
 void initVM(VirtualMachine* vm);
 void freeVM(VirtualMachine* vm);
 InterpretResult interpret(VirtualMachine* vm, ByteChunk* chunk);
-
+void push(VirtualMachine* vm, Value value);
+Value pop(VirtualMachine* vm);
 
 
 #endif 
