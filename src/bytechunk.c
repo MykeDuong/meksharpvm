@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdlib.h>
 
 #include "bytechunk.h"
@@ -45,6 +46,19 @@ void writeChunk(ByteChunk* chunk, uint8_t byte, int line) {
 int addConstant(ByteChunk* chunk, Value value) {
   writeValueArray(&chunk->constants, value);
   return chunk->constants.count - 1;
+}
+
+void writeConstant(ByteChunk* chunk, Value value, int line) {
+  int idx = addConstant(chunk, value);
+  if (idx < 255) {
+    writeChunk(chunk, OP_CONSTANT, line);
+    writeChunk(chunk, (uint8_t)idx, line);
+  } else {
+    writeChunk(chunk, OP_CONSTANT_LONG, line);
+    writeChunk(chunk, (uint8_t)(idx & 0xff), line);
+    writeChunk(chunk, (uint8_t)((idx >> 8) & 0xff), line);
+    writeChunk(chunk, (uint8_t)((idx >> 16) & 0xff), line);
+  }
 }
 
 void freeChunk(ByteChunk* chunk) {
