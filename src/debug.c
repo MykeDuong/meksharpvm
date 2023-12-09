@@ -11,6 +11,24 @@ void disassembleChunk(ByteChunk* chunk, const char* name) {
   }
 }
 
+static int getLine(ByteChunk* chunk, int offset) {
+  int i = 0;
+  int cnt = 0;
+
+  while (i < chunk->lineSize) {
+    cnt += chunk->lines[i];
+    
+    if (cnt > offset) {
+      return chunk->lines[i + 1];
+    }
+
+    i += 2;
+  }
+
+  printf("Error with line count\n");
+  return i - 1;
+}
+
 static int simpleInstruction(const char* name, int offset) {
   printf("%s\n", name);
   return offset + 1;
@@ -26,11 +44,11 @@ static int constantInstruction(const char* name, ByteChunk* chunk, int offset) {
 
 int disassembleInstruction(ByteChunk* chunk, int offset) {
   printf("%04d ", offset);
-  
-  if (offset > 0 && chunk->lines[offset] == chunk->lines[offset - 1]) {
+  int line = getLine(chunk, offset);
+  if (offset > 0 && line == getLine(chunk, offset - 1)) {
     printf("   | ");
   } else {
-    printf("%4d ", chunk->lines[offset]);
+    printf("%4d ", line);
   }
 
   uint8_t instruction = chunk->code[offset];

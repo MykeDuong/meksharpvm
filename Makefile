@@ -7,7 +7,7 @@ flags = -g
 $(exec): $(objects)
 	gcc $(objects) $(flags) -o $(exec)
 
-%.o: %.cpp include/%.h
+%.o: %.c %.h
 	gcc -c $(flags) $< -o $@
 
 test:

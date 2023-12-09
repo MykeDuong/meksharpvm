@@ -11,10 +11,17 @@ typedef enum {
 } OpCode;
 
 typedef struct {
+  // Bytecode
   int count;
   int capacity;
   uint8_t* code;
+
+  // Line information with RLE: size + line
   int* lines;
+  int lineSize;
+  int lineCapacity;
+  
+  // Constants
   ValueArray constants;
 } ByteChunk;
 

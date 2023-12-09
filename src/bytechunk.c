@@ -6,6 +6,8 @@
 void initChunk(ByteChunk *chunk) {
   chunk->count = 0;
   chunk->capacity = 0;
+  chunk->lineSize = 0;
+  chunk->lineCapacity = 0;
   chunk->code = NULL;
   chunk->lines = NULL;
   initValueArray(&chunk->constants);
@@ -17,12 +19,27 @@ void writeChunk(ByteChunk* chunk, uint8_t byte, int line) {
     int oldCap = chunk->capacity;
     chunk->capacity = GROW_CAPACITY(oldCap);
     chunk->code = GROW_ARRAY(uint8_t, chunk->code, oldCap, chunk->capacity);
-    chunk->lines = GROW_ARRAY(int, chunk->lines, oldCap, chunk->capacity);
-  } 
+  }
+
+  // Separate lines with other capacities
+  if (chunk->lineCapacity < chunk->lineSize + 2) {
+    int oldCap = chunk->lineCapacity;
+    chunk->lineCapacity = GROW_CAPACITY(oldCap);
+    chunk->lines = GROW_ARRAY(int, chunk->lines, oldCap, chunk->lineCapacity);
+  }
 
   chunk->code[chunk->count] = byte;
-  chunk->lines[chunk->count] = line;
   chunk->count++;
+
+  // Line
+  if (chunk->lineSize == 0 || line != chunk->lines[chunk->lineSize - 1]) {
+    chunk->lines[chunk->lineSize] = 1;
+    chunk->lines[chunk->lineSize + 1] = line;
+    chunk->lineSize += 2;
+  }
+  else {
+    chunk->lines[chunk->lineSize - 2]++;
+  }
 }
 
 int addConstant(ByteChunk* chunk, Value value) {
