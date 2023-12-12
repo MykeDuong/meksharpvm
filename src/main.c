@@ -20,7 +20,6 @@ static void repl(VirtualMachine* vm) {
 
 static char* readFile(const char* path) {
   FILE* file = fopen(path, "rb");
-
   if (file == NULL) {
     fprintf(stderr, "Could not open file \"%s\".\n", path);
     exit(74);
@@ -31,7 +30,16 @@ static char* readFile(const char* path) {
   rewind(file);
 
   char* buffer = (char*) malloc(fileSize + 1); // +1 for \0
+  if (buffer == NULL) {
+    fprintf(stderr, "Not enough memory to read \"%s\".\n", path);
+    exit(74);
+  }
+
   size_t bytesRead = fread(buffer, sizeof(char), fileSize, file);
+  if (bytesRead < fileSize) {
+    fprintf(stderr, "Could not read file \"%s\".\n", path);
+  }
+
   buffer[bytesRead] = '\0';
 
   fclose(file);

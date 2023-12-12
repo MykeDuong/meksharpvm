@@ -6,6 +6,7 @@
 #include "memory.h"
 #include "value.h"
 #include "vm.h"
+#include "compiler.h"
 
 static void resetStack(VirtualMachine* vm) {
   vm->stackTop = vm->stack;
@@ -96,9 +97,8 @@ static InterpretResult run(VirtualMachine* vm) {
 #undef BINARY_OP
 }
 
-InterpretResult interpret(VirtualMachine* vm, ByteChunk* chunk) {
-  vm->chunk = chunk;
-  vm->ip = vm->chunk->code;
-  return run(vm);
+InterpretResult interpret(VirtualMachine* vm, const char* source) {
+  compile(source);
+  return INTERPRET_OK;
 }
 
