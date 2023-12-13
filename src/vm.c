@@ -98,7 +98,20 @@ static InterpretResult run(VirtualMachine* vm) {
 }
 
 InterpretResult interpret(VirtualMachine* vm, const char* source) {
-  compile(source);
+  ByteChunk chunk;
+  initChunk(&chunk);
+
+  if (!compile(source, &chunk)) {
+    freeChunk(&chunk);
+    return INTERPRET_COMPILE_ERROR;
+  }
+
+  vm->chunk = &chunk;
+  vm->ip = vm->chunk->code;
+
+  InterpretResult result = run(vm);
+
+  freeChunk(&chunk);
   return INTERPRET_OK;
 }
 
