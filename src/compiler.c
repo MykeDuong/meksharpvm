@@ -117,7 +117,6 @@ static void binary(Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) 
 }
 
 static void grouping(Parser* parser, Scanner* scanner) {
-  expression();
   consume(parser, scanner, TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
 }
 
