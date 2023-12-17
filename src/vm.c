@@ -32,10 +32,11 @@ void initVM(VirtualMachine* vm) {
   vm->stack = NULL;
   vm->stackCapacity = 0;
   resetStack(vm);
+  vm->objects = NULL;
 }
 
 void freeVM(VirtualMachine* vm) {
-
+  freeObjects(vm); 
 }
 
 void push(VirtualMachine* vm, Value value) {

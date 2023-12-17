@@ -6,7 +6,7 @@
 
 #define STACK_MAX 256
 
-typedef struct {
+struct VirtualMachine_Struct{
   ByteChunk* chunk;
   uint8_t* ip;
 
@@ -14,7 +14,10 @@ typedef struct {
   Value* stack;
   int stackCapacity;
   Value* stackTop;
-} VirtualMachine;
+  Object* objects;
+} ;
+
+typedef struct VirtualMachine_Struct VirtualMachine;
 
 typedef enum {
   INTERPRET_OK,

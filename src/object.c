@@ -12,6 +12,9 @@
 static Object* allocateObject(VirtualMachine* vm, size_t size, ObjectType type) {
   Object* obj = (Object*)reallocate(NULL, 0, size);
   obj->type = type;
+
+  obj->next = vm->objects;
+  vm->objects = obj;
   return obj;
 }
 
