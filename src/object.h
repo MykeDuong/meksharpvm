@@ -23,12 +23,14 @@ struct Object {
 
 struct ObjString {
   Object object;
+  bool isConstant;
   int length;
   char* chars;
+  char storage[];
 };
 
-ObjString* takeString(VirtualMachine* vm, char* chars, int length);
-ObjString* copyString(VirtualMachine* vm, const char* chars, int lenght);
+ObjString* createString(VirtualMachine* vm, int length);
+ObjString* createConstantString(VirtualMachine* vm, const char* chars, int length);
 void printObject(Value value);
 
 static inline bool isObjectType(Value value, ObjectType type) {

@@ -18,28 +18,26 @@ static Object* allocateObject(VirtualMachine* vm, size_t size, ObjectType type) 
   return obj;
 }
 
-static ObjString* allocateString(VirtualMachine* vm, char* chars, int length) {
-  ObjString* string = ALLOCATE_OBJECT(vm, ObjString, OBJ_STRING);
+ObjString* createString(VirtualMachine* vm, int length) {
+  ObjString* string = (ObjString*)allocateObject(vm, sizeof(ObjString) + sizeof(char[length + 1]), OBJ_STRING);
   string->length = length;
-  string->chars = chars;
+  string->isConstant = false;
+  string->chars = string->storage;
   return string;
 }
 
-ObjString* takeString(VirtualMachine* vm, char* chars, int length) {
-  return allocateString(vm, chars, length);
-}
-
-ObjString* copyString(VirtualMachine* vm, const char* chars, int length) {
-  char* heapChars = ALLOCATE(char, length + 1);
-  memcpy(heapChars, chars, length);
-  heapChars[length] = '\0';
-  return allocateString(vm, heapChars, length);
+ObjString* createConstantString(VirtualMachine* vm, const char* chars, int length) {
+  ObjString* string = (ObjString*)allocateObject(vm, sizeof(ObjString), OBJ_STRING);
+  string->length = length;
+  string->isConstant = true;
+  string->chars = chars;
+  return string;  
 }
 
 void printObject(Value value) {
   switch (OBJECT_TYPE(value)) {
     case OBJ_STRING:
-      printf("%s", AS_CSTRING(value));
+      printf("%.*s", AS_STRING(value)->length, AS_CSTRING(value));
       break;
     default: return; // Unreachable
   }
