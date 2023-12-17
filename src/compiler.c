@@ -7,6 +7,7 @@
 #include "compiler.h"
 #include "common.h"
 #include "scanner.h"
+#include "value.h"
 #include "vm.h"
 
 #ifdef DEBUG_PRINT_CODE
@@ -174,6 +175,10 @@ static void unary(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChun
   }
 }
 
+static void string(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
+  emitConstant(parser, compilingChunk, OBJECT_VAL(copyString(vm, parser->previous.start + 1, parser->previous.length - 2))); 
+}
+
 ParseRule rules[] = {
   [TOKEN_LEFT_PAREN]        = { grouping, NULL,     PREC_NONE },
   [TOKEN_RIGHT_PAREN]       = { NULL,     NULL,     PREC_NONE },
@@ -195,7 +200,7 @@ ParseRule rules[] = {
   [TOKEN_LESS]              = { NULL,     binary,   PREC_COMPARISON },
   [TOKEN_LESS_EQUAL]        = { NULL,     binary,   PREC_COMPARISON },
   [TOKEN_IDENTIFIER]        = { NULL,     NULL,     PREC_NONE },
-  [TOKEN_STRING]            = { NULL,     NULL,     PREC_NONE },
+  [TOKEN_STRING]            = { string,   NULL,     PREC_NONE },
   [TOKEN_NUMBER]            = { number,   NULL,     PREC_NONE },
   [TOKEN_AND]               = { NULL,     NULL,     PREC_NONE },
   [TOKEN_CLASS]             = { NULL,     NULL,     PREC_NONE },
