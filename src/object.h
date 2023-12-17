@@ -26,6 +26,7 @@ struct ObjString {
   char* chars;
 };
 
+ObjString* takeString(VirtualMachine* vm, char* chars, int length);
 ObjString* copyString(VirtualMachine* vm, const char* chars, int lenght);
 void printObject(Value value);
 

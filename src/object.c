@@ -6,9 +6,6 @@
 #include "value.h"
 #include "vm.h"
 
-#define ALLOCATE(type, count) \
-  (type*)reallocate(NULL, 0, sizeof(type) * (count))
-
 #define ALLOCATE_OBJECT(vm, type, objectType) \
   (type*)allocateObject((vm), sizeof(type), objectType)
 
@@ -23,6 +20,10 @@ static ObjString* allocateString(VirtualMachine* vm, char* chars, int length) {
   string->length = length;
   string->chars = chars;
   return string;
+}
+
+ObjString* takeString(VirtualMachine* vm, char* chars, int length) {
+  return allocateString(vm, chars, length);
 }
 
 ObjString* copyString(VirtualMachine* vm, const char* chars, int length) {
