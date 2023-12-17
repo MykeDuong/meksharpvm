@@ -147,7 +147,7 @@ InterpretResult interpret(VirtualMachine* vm, const char* source) {
   ByteChunk chunk;
   initChunk(&chunk);
 
-  if (!compile(source, &chunk)) {
+  if (!compile(vm, &chunk, source)) {
     freeChunk(&chunk);
     return INTERPRET_COMPILE_ERROR;
   }
