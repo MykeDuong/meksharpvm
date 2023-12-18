@@ -36,6 +36,7 @@ void printValue(Value value) {
     case VAL_NAH: printf("nah"); break;
     case VAL_NUMBER: printf("%g", AS_NUMBER(value)); break; 
     case VAL_OBJECT: printObject(value); break;
+    case VAL_EMPTY: printf("EMPTY"); break;
   }
 }
 
@@ -45,11 +46,7 @@ bool valuesEqual(Value a, Value b) {
     case VAL_BOOL:      return AS_BOOL(a) == AS_BOOL(b);
     case VAL_NAH:       return true;
     case VAL_NUMBER:    return AS_NUMBER(a) == AS_NUMBER(b);
-    case VAL_OBJECT: {
-      ObjString* aString = AS_STRING(a);
-      ObjString* bString = AS_STRING(b);
-      return aString->length == bString->length && memcpy(aString->chars, bString->chars, aString->length);
-    }
+    case VAL_OBJECT:    return AS_OBJECT(a) == AS_OBJECT(b); 
     default:            return false; // Unreachable
   }
 }

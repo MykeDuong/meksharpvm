@@ -33,11 +33,13 @@ void initVM(VirtualMachine* vm) {
   vm->stackCapacity = 0;
   resetStack(vm);
   vm->objects = NULL;
+  initTable(&vm->strings);
 }
 
 void freeVM(VirtualMachine* vm) {
+  freeTable(&vm->strings);
   freeObjects(vm);
-  FREE_ARRAY(Value, vm->stack, vm->stackTop - vm->stack);
+  FREE_ARRAY(Value, vm->stack, vm->stackCapacity);
 }
 
 void push(VirtualMachine* vm, Value value) {
@@ -72,10 +74,11 @@ static void concatenate(VirtualMachine* vm) {
   ObjString* a = AS_STRING(pop(vm));
 
   int length = a->length + b->length;
-  ObjString* result = createString(vm, length);
-  memcpy(result->chars, a->chars, a->length);
-  memcpy(result->chars + a->length, b->chars, b->length);
-  result->chars[length] = '\0';
+  char chars[length + 1];
+  memcpy(chars, a->chars, a->length);
+  memcpy(chars + a->length, b->chars, b->length);
+  chars[length] = '\0';
+  ObjString* result = createString(vm, chars, length);
 
   push(vm, OBJECT_VAL(result));
 }

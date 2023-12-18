@@ -176,7 +176,6 @@ static void unary(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChun
 }
 
 static void string(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
-  printf("String length: %d\n", parser->previous.length);
   emitConstant(parser, compilingChunk, OBJECT_VAL(createConstantString(vm, parser->previous.start + 1, parser->previous.length - 2))); 
 }
 

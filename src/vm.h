@@ -3,6 +3,7 @@
 
 #include "bytechunk.h"
 #include "value.h"
+#include "table.h"
 
 #define STACK_MAX 256
 
@@ -14,6 +15,7 @@ struct VirtualMachine_Struct{
   Value* stack;
   int stackCapacity;
   Value* stackTop;
+  Table strings;
   Object* objects;
 } ;
 

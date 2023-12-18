@@ -2,8 +2,10 @@
 #define MEKVM_OBJECT_H
 
 #include "common.h"
+#include "memory.h"
 #include "value.h"
 #include "vm.h"
+#include <stdint.h>
 
 #define OBJECT_TYPE(value)         (AS_OBJECT(value)->type)
 
@@ -25,12 +27,16 @@ struct ObjString {
   Object object;
   bool isConstant;
   int length;
-  char* chars;
+  uint32_t hash;
+  const char* chars;
   char storage[];
 };
 
-ObjString* createString(VirtualMachine* vm, int length);
+ObjString* createString(VirtualMachine* vm, const char* chars, int length);
 ObjString* createConstantString(VirtualMachine* vm, const char* chars, int length);
+ObjString* completeString(VirtualMachine* vm, ObjString* string);
+uint32_t hashValue(Value value);
+
 void printObject(Value value);
 
 static inline bool isObjectType(Value value, ObjectType type) {

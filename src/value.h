@@ -11,6 +11,7 @@ typedef enum {
   VAL_NAH,
   VAL_NUMBER,
   VAL_OBJECT,
+  VAL_EMPTY,
 } ValueType;
 
 typedef struct {
@@ -26,6 +27,7 @@ typedef struct {
 #define IS_NAH(value)     ((value).type == VAL_NAH)
 #define IS_NUMBER(value)  ((value).type == VAL_NUMBER)
 #define IS_OBJECT(value)  ((value).type == VAL_OBJECT)
+#define IS_EMPTY(value)   ((value).type == VAL_EMPTY)
 
 #define AS_OBJECT(value)  ((value).as.object)
 #define AS_BOOL(value)    ((value).as.boolean)
@@ -35,7 +37,7 @@ typedef struct {
 #define NAH_VAL           ((Value) { VAL_NAH, {.number = 0}})
 #define NUMBER_VAL(value) ((Value) { VAL_NUMBER, {.number = value} })
 #define OBJECT_VAL(value) ((Value) { VAL_OBJECT, {.object = (Object*)value} })
-
+#define EMPTY_VAL         ((Value) { VAL_EMPTY, {.number = 0} })
 typedef struct {
   int capacity;
   int count;

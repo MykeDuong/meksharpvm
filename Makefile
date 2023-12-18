@@ -16,6 +16,11 @@ test:
 debug:
 	gdb $(exec) $(test_file)
 
+mem-test:
+	valgrind --leak-check=full \
+         --show-leak-kinds=all \
+				 ./$(exec)
+
 install:
 	make
 	cp ./mkv.out /usr/local/bin/mks
