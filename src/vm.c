@@ -36,7 +36,8 @@ void initVM(VirtualMachine* vm) {
 }
 
 void freeVM(VirtualMachine* vm) {
-  freeObjects(vm); 
+  freeObjects(vm);
+  FREE_ARRAY(Value, vm->stack, vm->stackTop - vm->stack);
 }
 
 void push(VirtualMachine* vm, Value value) {
