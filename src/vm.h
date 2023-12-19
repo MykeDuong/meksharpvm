@@ -15,6 +15,7 @@ struct VirtualMachine_Struct{
   Value* stack;
   int stackCapacity;
   Value* stackTop;
+  Table globals;
   Table strings;
   Object* objects;
 } ;

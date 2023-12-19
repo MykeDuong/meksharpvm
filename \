@@ -132,7 +132,6 @@ static void endCompiler(Parser* parser, ByteChunk* compilingChunk) {
 // Forward Declaration
 static void expression(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk);
 static void statement(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk);
-static uint8_t identifierConstant(VirtualMachine* vm, ByteChunk* compilingChunk, Token* name);
 static void declaration(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk);
 static ParseRule* getRule(TokenType type);
 static void parsePrecedence(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk, Precedence precedence);
@@ -193,18 +192,8 @@ static void unary(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChun
 static void string(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
   emitConstant(
       parser, compilingChunk, 
-      // OBJECT_VAL(createConstantString(vm, parser->previous.start + 1, parser->previous.length - 2))
-      OBJECT_VAL(createString(vm, parser->previous.start + 1, parser->previous.length - 2))
+      OBJECT_VAL(createConstantString(vm, parser->previous.start + 1, parser->previous.length - 2))
   ); 
-}
-
-static void namedVariable(VirtualMachine* vm, Parser* parser, ByteChunk* compilingChunk, Token name) {
-  uint8_t arg = identifierConstant(vm, compilingChunk, &name);
-  emitBytes(parser, compilingChunk, OP_GET_GLOBAL, arg);
-}
-
-static void variable(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
-  namedVariable(vm, parser, compilingChunk, parser->previous);
 }
 
 ParseRule rules[] = {
@@ -227,7 +216,7 @@ ParseRule rules[] = {
   [TOKEN_GREATER_EQUAL]     = { NULL,     binary,   PREC_COMPARISON },
   [TOKEN_LESS]              = { NULL,     binary,   PREC_COMPARISON },
   [TOKEN_LESS_EQUAL]        = { NULL,     binary,   PREC_COMPARISON },
-  [TOKEN_IDENTIFIER]        = { variable, NULL,     PREC_NONE },
+  [TOKEN_IDENTIFIER]        = { NULL,     NULL,     PREC_NONE },
   [TOKEN_STRING]            = { string,   NULL,     PREC_NONE },
   [TOKEN_NUMBER]            = { number,   NULL,     PREC_NONE },
   [TOKEN_AND]               = { NULL,     NULL,     PREC_NONE },
@@ -269,8 +258,7 @@ static void parsePrecedence(VirtualMachine* vm, Parser* parser, Scanner* scanner
 }
 
 static uint8_t identifierConstant(VirtualMachine* vm, ByteChunk* compilingChunk, Token* name) {
-  // Can potentiall use createConstantString
-  addConstant(compilingChunk, OBJECT_VAL(createString(vm, name->start, name->length)));
+  writeConstant(compilingChunk, OBJECT_VAL(createConstantString(vm, name->start, name->length)), name->line);
   return compilingChunk->constants.count - 1;
 }
 

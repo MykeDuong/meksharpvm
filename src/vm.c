@@ -7,6 +7,7 @@
 #include "debug.h"
 #include "memory.h"
 #include "object.h"
+#include "table.h"
 #include "value.h"
 #include "vm.h"
 #include "compiler.h"
@@ -34,10 +35,13 @@ void initVM(VirtualMachine* vm) {
   resetStack(vm);
   vm->objects = NULL;
   initTable(&vm->strings);
+  initTable(&vm->globals);
 }
 
 void freeVM(VirtualMachine* vm) {
   freeTable(&vm->strings);
+  freeTable(&vm->globals);
+  freeTable(&vm->globals);
   freeObjects(vm);
   FREE_ARRAY(Value, vm->stack, vm->stackCapacity);
 }
@@ -85,9 +89,10 @@ static void concatenate(VirtualMachine* vm) {
 
 static InterpretResult run(VirtualMachine* vm) {
 #define READ_BYTE() (*vm->ip++)
-#define READ_CONSTANT() (vm->chunk->constants.values[READ_BYTE()]);
+#define READ_CONSTANT() (vm->chunk->constants.values[READ_BYTE()])
 #define READ_CONSTANT_LONG() \
   ((vm->chunk->constants.values[READ_BYTE() | (READ_BYTE() << 8) | (READ_BYTE() << 16)]))
+#define READ_STRING() AS_STRING(READ_CONSTANT())
 
 #define BINARY_OP(valueType, op) \
   do { \
@@ -127,6 +132,23 @@ static InterpretResult run(VirtualMachine* vm) {
       case OP_TRUE: push(vm, BOOL_VAL(true)); break;
       case OP_FALSE: push(vm, BOOL_VAL(false)); break;
       case OP_POP: pop(vm); break;
+      case OP_GET_GLOBAL: {
+        Value name = READ_CONSTANT();
+        ObjString* nameString = AS_STRING(name);
+        Value value;
+        if (!tableGet(&vm->globals, name, &value)) {
+          runtimeError(vm, "Undefined variable '%.*s'.", nameString->length, nameString->chars);
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        push(vm, value);
+        break;
+      }
+      case OP_DEFINE_GLOBAL: {
+        Value name = READ_CONSTANT(); 
+        tableSet(&vm->globals, name, peek(vm, 0));
+        pop(vm);
+        break;
+      }
       case OP_EQUAL: {
         Value b = pop(vm);
         Value a = pop(vm);
