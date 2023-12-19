@@ -126,6 +126,7 @@ static InterpretResult run(VirtualMachine* vm) {
       case OP_NAH: push(vm, NAH_VAL); break;
       case OP_TRUE: push(vm, BOOL_VAL(true)); break;
       case OP_FALSE: push(vm, BOOL_VAL(false)); break;
+      case OP_POP: pop(vm); break;
       case OP_EQUAL: {
         Value b = pop(vm);
         Value a = pop(vm);

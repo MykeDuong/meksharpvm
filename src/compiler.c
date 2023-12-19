@@ -261,6 +261,12 @@ static void expression(VirtualMachine* vm, Parser* parser, Scanner* scanner, Byt
   parsePrecedence(vm, parser, scanner, compilingChunk, PREC_ASSIGNMENT);
 }
 
+static void expressionStatement(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
+  expression(vm, parser, scanner, compilingChunk);
+  consume(parser, scanner, TOKEN_SEMICOLON, "Expect ';' after expression.");
+  emitByte(parser, compilingChunk, OP_POP);
+}
+
 static void printStatement(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
   expression(vm, parser, scanner, compilingChunk);
   consume(parser, scanner, TOKEN_SEMICOLON, "Expected ';' after value.");
@@ -274,6 +280,8 @@ static void declaration(VirtualMachine* vm, Parser* parser, Scanner* scanner, By
 static void statement(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
   if (match(parser, scanner, TOKEN_PRINT)) {
     printStatement(vm, parser, scanner, compilingChunk);
+  } else {
+    expressionStatement(vm, parser, scanner, compilingChunk);
   }
 }
 
