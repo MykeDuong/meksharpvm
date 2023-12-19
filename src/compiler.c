@@ -6,6 +6,7 @@
 #include "bytechunk.h"
 #include "compiler.h"
 #include "common.h"
+#include "memory.h"
 #include "scanner.h"
 #include "value.h"
 #include "vm.h"
@@ -91,6 +92,16 @@ static void consume(Parser* parser, Scanner* scanner, TokenType type, const char
   errorAtCurrent(parser, message);
 }
 
+static bool check(Parser* parser, TokenType type) {
+  return parser->current.type == type;
+}
+
+static bool match(Parser* parser, Scanner* scanner, TokenType type) {
+  if (!check(parser, type)) return false;
+  advance(parser, scanner);
+  return true;
+}
+
 static void emitByte(Parser* parser, ByteChunk* compilingChunk, uint8_t byte) {
   writeChunk(currentChunk(compilingChunk), byte, parser->previous.line);
 }
@@ -119,6 +130,8 @@ static void endCompiler(Parser* parser, ByteChunk* compilingChunk) {
 
 // Forward Declaration
 static void expression(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk);
+static void statement(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk);
+static void declaration(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk);
 static ParseRule* getRule(TokenType type);
 static void parsePrecedence(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk, Precedence precedence);
 
@@ -248,6 +261,21 @@ static void expression(VirtualMachine* vm, Parser* parser, Scanner* scanner, Byt
   parsePrecedence(vm, parser, scanner, compilingChunk, PREC_ASSIGNMENT);
 }
 
+static void printStatement(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
+  expression(vm, parser, scanner, compilingChunk);
+  consume(parser, scanner, TOKEN_SEMICOLON, "Expected ';' after value.");
+  emitByte(parser, compilingChunk, OP_PRINT);
+}
+
+static void declaration(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
+  statement(vm, parser, scanner, compilingChunk);
+}
+
+static void statement(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
+  if (match(parser, scanner, TOKEN_PRINT)) {
+    printStatement(vm, parser, scanner, compilingChunk);
+  }
+}
 
 bool compile(VirtualMachine* vm, ByteChunk* chunk, const char* source) {
   Scanner scanner;
@@ -260,8 +288,11 @@ bool compile(VirtualMachine* vm, ByteChunk* chunk, const char* source) {
   ByteChunk* compilingChunk = chunk;
 
   advance(&parser, &scanner);
-  expression(vm, &parser, &scanner, compilingChunk);
-  consume(&parser, &scanner, TOKEN_EOF, "Expect end of expression.");
+
+  while (!match(&parser, &scanner, TOKEN_EOF)) {
+    declaration(vm, &parser, &scanner, compilingChunk);
+  }
+
   endCompiler(&parser, compilingChunk);
 
   return !parser.hadError;

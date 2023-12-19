@@ -160,9 +160,13 @@ static InterpretResult run(VirtualMachine* vm) {
         }
         push(vm, NUMBER_VAL(-AS_NUMBER(pop(vm))));
         break;
-      case OP_RETURN: {
+      case OP_PRINT: {
         printValue(pop(vm));
         printf("\n");
+        break;
+      }
+      case OP_RETURN: {
+        // Exit interpreter
         return INTERPRET_OK;
       }
     }

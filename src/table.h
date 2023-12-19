@@ -24,6 +24,4 @@ void tableAddAll(Table* from, Table* to);
 void printTable(Table* table);
 ObjString* tableFindString(Table* table, const char* chars, int length, uint32_t hash);
 
-
-
 #endif /* MEKVM_TABLE_H */ 
