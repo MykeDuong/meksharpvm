@@ -149,6 +149,16 @@ static InterpretResult run(VirtualMachine* vm) {
         pop(vm);
         break;
       }
+      case OP_SET_GLOBAL: {
+        Value name = READ_CONSTANT();
+        if (tableSet(&vm->globals, name, peek(vm, 0))) {
+          tableDelete(&vm->globals, name);
+          ObjString* nameString = AS_STRING(name);
+          runtimeError(vm, "Undefined variable '%.*s'", nameString->length, nameString->chars);
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        break;
+      }
       case OP_EQUAL: {
         Value b = pop(vm);
         Value a = pop(vm);

@@ -1,7 +1,5 @@
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/types.h>
 
 #include "bytechunk.h"
 #include "compiler.h"
@@ -37,7 +35,13 @@ typedef enum {
   PREC_PRIMARY
 } Precedence;
 
-typedef void (*ParseFn)(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk);
+typedef void (*ParseFn)(
+  VirtualMachine* vm, 
+  Parser* parser, 
+  Scanner* scanner,
+  ByteChunk* compilingChunk,
+  bool canAssign
+);
 
 typedef struct {
   ParseFn prefix;
@@ -137,7 +141,7 @@ static void declaration(VirtualMachine* vm, Parser* parser, Scanner* scanner, By
 static ParseRule* getRule(TokenType type);
 static void parsePrecedence(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk, Precedence precedence);
 
-static void binary(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
+static void binary(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk, bool canAssign) {
   TokenType operatorType = parser->previous.type;
   ParseRule* rule = getRule(operatorType);
   parsePrecedence(vm, parser, scanner, compilingChunk, (Precedence) rule->precedence + 1);
@@ -157,7 +161,7 @@ static void binary(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChu
   }
 }
 
-static void literal(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
+static void literal(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk, bool canAssign) {
   switch(parser->previous.type) {
     case TOKEN_FALSE: emitByte(parser, compilingChunk, OP_FALSE); break;
     case TOKEN_NAH: emitByte(parser, compilingChunk, OP_NAH); break;
@@ -166,17 +170,17 @@ static void literal(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteCh
   }
 }
 
-static void grouping(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
+static void grouping(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk, bool canAssign) {
   expression(vm, parser, scanner, compilingChunk);
   consume(parser, scanner, TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
 }
 
-static void number(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
+static void number(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk, bool canAssign) {
   double value = strtod(parser->previous.start, NULL);
   emitConstant(parser, compilingChunk, NUMBER_VAL(value));
 } 
 
-static void unary(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
+static void unary(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk, bool canAssign) {
   TokenType operatorType = parser->previous.type;
 
   // Compile the operand;
@@ -190,7 +194,7 @@ static void unary(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChun
   }
 }
 
-static void string(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
+static void string(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk, bool canAssign) {
   emitConstant(
       parser, compilingChunk, 
       // OBJECT_VAL(createConstantString(vm, parser->previous.start + 1, parser->previous.length - 2))
@@ -198,13 +202,18 @@ static void string(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChu
   ); 
 }
 
-static void namedVariable(VirtualMachine* vm, Parser* parser, ByteChunk* compilingChunk, Token name) {
+static void namedVariable(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk, bool canAssign, Token name) {
   uint8_t arg = identifierConstant(vm, compilingChunk, &name);
-  emitBytes(parser, compilingChunk, OP_GET_GLOBAL, arg);
+  if (canAssign && match(parser, scanner, TOKEN_EQUAL)) {
+    expression(vm, parser, scanner, compilingChunk);
+    emitBytes(parser, compilingChunk, OP_SET_GLOBAL, arg);
+  } else {
+    emitBytes(parser, compilingChunk, OP_GET_GLOBAL, arg);
+  }
 }
 
-static void variable(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
-  namedVariable(vm, parser, compilingChunk, parser->previous);
+static void variable(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk, bool canAssign) {
+  namedVariable(vm, parser, scanner, compilingChunk, canAssign, parser->previous);
 }
 
 ParseRule rules[] = {
@@ -254,16 +263,21 @@ static void parsePrecedence(VirtualMachine* vm, Parser* parser, Scanner* scanner
   advance(parser, scanner);
   ParseFn prefixRule = getRule(parser->previous.type)->prefix;
   if (prefixRule == NULL) {
-    error(parser, "Expected expression");
+    error(parser, "Expected expression.");
     return;
   }
-
-  prefixRule(vm, parser, scanner, compilingChunk);
+  
+  bool canAssign = precedence <= PREC_ASSIGNMENT;
+  prefixRule(vm, parser, scanner, compilingChunk, canAssign);
   
   while (precedence <= getRule(parser->current.type)->precedence) {
     advance(parser, scanner);
     ParseFn infixRule = getRule(parser->previous.type)->infix;
-    infixRule(vm, parser, scanner, compilingChunk);
+    infixRule(vm, parser, scanner, compilingChunk, canAssign);
+    
+    if (canAssign && match(parser, scanner, TOKEN_EQUAL)) {
+      error(parser, "Invalid assignment target.");
+    }
   }
 
 }
