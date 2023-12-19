@@ -7,6 +7,7 @@
 #include "memory.h"
 #include "object.h"
 #include "scanner.h"
+#include "table.h"
 #include "value.h"
 #include "vm.h"
 
@@ -136,7 +137,7 @@ static void endCompiler(Parser* parser, ByteChunk* compilingChunk) {
 // Forward Declaration
 static void expression(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk);
 static void statement(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk);
-static uint8_t identifierConstant(VirtualMachine* vm, ByteChunk* compilingChunk, Token* name);
+static int identifierConstant(VirtualMachine* vm, ByteChunk* compilingChunk, Token* name);
 static void declaration(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk);
 static ParseRule* getRule(TokenType type);
 static void parsePrecedence(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk, Precedence precedence);
@@ -282,9 +283,17 @@ static void parsePrecedence(VirtualMachine* vm, Parser* parser, Scanner* scanner
 
 }
 
-static uint8_t identifierConstant(VirtualMachine* vm, ByteChunk* compilingChunk, Token* name) {
+static int identifierConstant(VirtualMachine* vm, ByteChunk* compilingChunk, Token* name) {
   // Can potentiall use createConstantString
-  addConstant(compilingChunk, OBJECT_VAL(createString(vm, name->start, name->length)));
+  ObjString* nameString = createString(vm, name->start, name->length); 
+  Value value;
+  // finding 
+  for (int i = 0; i < compilingChunk->constants.count; i++) {
+    if (valuesEqual(compilingChunk->constants.values[i], OBJECT_VAL(nameString))) {
+      return i;
+    }
+  }
+  addConstant(compilingChunk, OBJECT_VAL(nameString));
   return compilingChunk->constants.count - 1;
 }
 
