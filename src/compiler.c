@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "bytechunk.h"
 #include "compiler.h"
@@ -49,6 +50,17 @@ typedef struct {
   ParseFn infix;
   Precedence precedence;
 } ParseRule;
+
+typedef struct {
+  Token name;
+  int depth;
+} Local;
+
+typedef struct {
+  Local locals[UINT8_COUNT];
+  int localCount;
+  int scopeDepth;
+} Compiler;
 
 static ByteChunk* currentChunk(ByteChunk* compilingChunk) {
   return compilingChunk;
@@ -125,6 +137,11 @@ static void emitConstant(Parser* parser, ByteChunk* compilingChunk, Value value)
   writeConstant(currentChunk(compilingChunk), value, parser->previous.line);
 }
 
+static void initCompiler(Compiler* compiler) {
+  compiler->localCount = 0;
+  compiler->scopeDepth = 0;
+}
+
 static void endCompiler(Parser* parser, ByteChunk* compilingChunk) {
   emitReturn(parser, compilingChunk);
 #ifdef DEBUG_PRINT_CODE
@@ -134,11 +151,26 @@ static void endCompiler(Parser* parser, ByteChunk* compilingChunk) {
 #endif /* ifdef DEBUG_PRINT_CODE */
 }
 
+static void beginScope(Compiler* currentCompiler) {
+  currentCompiler->scopeDepth++;
+}
+
+static void endScope(Compiler* currentCompiler, Parser* parser, ByteChunk* compilingChunk) {
+  currentCompiler->scopeDepth--;
+
+  while (currentCompiler->localCount > 0 && 
+      currentCompiler->locals[currentCompiler->localCount - 1].depth > currentCompiler->scopeDepth
+  ) {
+    emitByte(parser, compilingChunk, OP_POP);
+    currentCompiler->localCount--;
+  }
+}
+
 // Forward Declaration
 static void expression(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk);
-static void statement(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk);
+static void statement(VirtualMachine* vm, Compiler* compiler, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk);
 static int identifierConstant(VirtualMachine* vm, ByteChunk* compilingChunk, Token* name);
-static void declaration(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk);
+static void declaration(VirtualMachine* vm, Compiler* compiler, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk);
 static ParseRule* getRule(TokenType type);
 static void parsePrecedence(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk, Precedence precedence);
 
@@ -297,12 +329,55 @@ static int identifierConstant(VirtualMachine* vm, ByteChunk* compilingChunk, Tok
   return compilingChunk->constants.count - 1;
 }
 
-static uint8_t parseVariable(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk, const char* errorMessage) {
+static bool identifiersEqual(Token* a, Token* b) {
+  if (a->length != b->length) { return false; }
+  return memcmp(a->start, b->start, a->length) == 0;
+}
+
+static void addLocal(Compiler* currentCompiler, Parser* parser, Token name) {
+  if (currentCompiler->localCount == UINT8_COUNT) {
+    error(parser, "Too many local variables in function/scope.");
+    return;
+  }
+  Local* local = &currentCompiler->locals[currentCompiler->localCount++];
+  local->name = name;
+  local->depth = currentCompiler->scopeDepth;
+}
+
+static void declareVariable(Compiler* currentCompiler, Parser* parser) {
+  if (currentCompiler->scopeDepth == 0) return;
+  Token* name = &parser->previous;
+
+  for (int i = currentCompiler->localCount - 1; i >= 0; i--) {
+    Local* local = &currentCompiler->locals[i];
+    if (local->depth != -1 && local->depth < currentCompiler->scopeDepth) {
+      break;
+    }
+
+    if (identifiersEqual(name, &local->name)) {
+      error(parser, "Already a variable with this name in this scope.");
+    }
+  }
+
+  addLocal(currentCompiler, parser, *name);
+}
+
+static uint8_t parseVariable(
+    VirtualMachine* vm, Compiler* currentCompiler, Parser* parser, Scanner* scanner, 
+    ByteChunk* compilingChunk, const char* errorMessage
+) {
   consume(parser, scanner, TOKEN_IDENTIFIER, errorMessage);
+
+  declareVariable(currentCompiler, parser);
+  if (currentCompiler->scopeDepth > 0) { return 0; }
+
   return identifierConstant(vm, compilingChunk, &parser->previous);
 }
 
-static void defineVariable(Parser* parser, ByteChunk* compilingChunk, uint8_t global) {
+static void defineVariable(Compiler* current, Parser* parser, ByteChunk* compilingChunk, uint8_t global) {
+  if (current->scopeDepth > 0) {
+    return;
+  }
   emitBytes(parser, compilingChunk, OP_DEFINE_GLOBAL, global);
 }
 
@@ -314,8 +389,18 @@ static void expression(VirtualMachine* vm, Parser* parser, Scanner* scanner, Byt
   parsePrecedence(vm, parser, scanner, compilingChunk, PREC_ASSIGNMENT);
 }
 
-static void varDeclaration(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
-  uint8_t global = parseVariable(vm, parser, scanner, compilingChunk, "Expect variable name");
+static void block(VirtualMachine* vm, Compiler* compiler, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
+  while (!check(parser, TOKEN_RIGHT_BRACE) && !check(parser, TOKEN_EOF)) {
+    declaration(vm, compiler, parser, scanner, compilingChunk);
+  }
+
+  consume(parser, scanner, TOKEN_RIGHT_BRACE, "Expect '}' aafter block.");
+}
+
+static void varDeclaration(
+    VirtualMachine* vm, Compiler* currentCompiler, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk
+) {
+  uint8_t global = parseVariable(vm, currentCompiler, parser, scanner, compilingChunk, "Expect variable name");
 
   if (match(parser, scanner, TOKEN_EQUAL)) {
     expression(vm, parser, scanner, compilingChunk);
@@ -324,7 +409,7 @@ static void varDeclaration(VirtualMachine* vm, Parser* parser, Scanner* scanner,
   }
   consume(parser, scanner, TOKEN_SEMICOLON, "Expect ';' after variable declaration");
 
-  defineVariable(parser,compilingChunk, global);
+  defineVariable(currentCompiler, parser, compilingChunk, global);
 }
 
 static void expressionStatement(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
@@ -363,20 +448,24 @@ static void synchronize(Parser* parser, Scanner* scanner) {
   }
 }
 
-static void declaration(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
+static void declaration(VirtualMachine* vm, Compiler* currentCompiler, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
   if (match(parser, scanner, TOKEN_VAR)) {
-    varDeclaration(vm, parser, scanner, compilingChunk);
+    varDeclaration(vm, currentCompiler, parser, scanner, compilingChunk);
   } else {
-    statement(vm, parser, scanner, compilingChunk);
+    statement(vm, currentCompiler, parser, scanner, compilingChunk);
   } 
 
   if (parser->panicMode) synchronize(parser, scanner);
 }
 
-static void statement(VirtualMachine* vm, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
+static void statement(VirtualMachine* vm, Compiler* compiler, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
   if (match(parser, scanner, TOKEN_PRINT)) {
     printStatement(vm, parser, scanner, compilingChunk);
-  } else {
+  } else if (match(parser, scanner, TOKEN_LEFT_BRACE)) {
+    beginScope(compiler);
+    block(vm, compiler, parser, scanner, compilingChunk);
+    endScope(compiler, parser, compilingChunk);
+  }else {
     expressionStatement(vm, parser, scanner, compilingChunk);
   }
 }
@@ -389,12 +478,15 @@ bool compile(VirtualMachine* vm, ByteChunk* chunk, const char* source) {
   parser.hadError = false;
   parser.panicMode = false;
   
+  Compiler compiler;
+  initCompiler(&compiler);
+
   ByteChunk* compilingChunk = chunk;
 
   advance(&parser, &scanner);
 
   while (!match(&parser, &scanner, TOKEN_EOF)) {
-    declaration(vm, &parser, &scanner, compilingChunk);
+    declaration(vm, &compiler, &parser, &scanner, compilingChunk);
   }
 
   endCompiler(&parser, compilingChunk);
