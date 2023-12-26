@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
@@ -92,6 +93,8 @@ static InterpretResult run(VirtualMachine* vm) {
 #define READ_CONSTANT() (vm->chunk->constants.values[READ_BYTE()])
 #define READ_CONSTANT_LONG() \
   ((vm->chunk->constants.values[READ_BYTE() | (READ_BYTE() << 8) | (READ_BYTE() << 16)]))
+#define READ_SHORT() \
+  (vm->ip += 2, (uint16_t)((vm->ip[-2] << 8) | vm->ip[-1]))
 #define READ_STRING() AS_STRING(READ_CONSTANT())
 
 #define BINARY_OP(valueType, op) \
@@ -132,6 +135,16 @@ static InterpretResult run(VirtualMachine* vm) {
       case OP_TRUE: push(vm, BOOL_VAL(true)); break;
       case OP_FALSE: push(vm, BOOL_VAL(false)); break;
       case OP_POP: pop(vm); break;
+      case OP_GET_LOCAL: {
+        uint8_t slot = READ_BYTE();
+        push(vm, vm->stack[slot]);
+        break;
+      }
+      case OP_SET_LOCAL: {
+        uint8_t slot = READ_BYTE();
+        vm->stack[slot] = peek(vm, 0);
+        break;
+      }
       case OP_GET_GLOBAL: {
         Value name = READ_CONSTANT();
         ObjString* nameString = AS_STRING(name);
@@ -198,6 +211,21 @@ static InterpretResult run(VirtualMachine* vm) {
         printf("\n");
         break;
       }
+      case OP_JUMP: {
+        uint16_t offset = READ_SHORT();
+        vm->ip += offset;
+        break;
+      }
+      case OP_JUMP_IF_FALSE: {
+        uint16_t offset = READ_SHORT();
+        if (isFalsey(peek(vm, 0))) vm->ip += offset;
+        break;
+      }
+      case OP_LOOP: {
+        uint16_t offset = READ_SHORT();
+        vm->ip -= offset;
+        break;
+      }
       case OP_RETURN: {
         // Exit interpreter
         return INTERPRET_OK;
@@ -208,6 +236,7 @@ static InterpretResult run(VirtualMachine* vm) {
 #undef READ_BYTE
 #undef READ_CONSTANT 
 #undef READ_LONG_CONSTANT
+#undef READ_SHORT
 #undef BINARY_OP
 }
 
