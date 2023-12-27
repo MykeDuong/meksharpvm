@@ -669,7 +669,7 @@ static void statement(VirtualMachine* vm, Compiler* currentCompiler, Parser* par
   }
 }
 
-ObjFunction* compile(VirtualMachine* vm, ByteChunk* chunk, const char* source) {
+ObjFunction* compile(VirtualMachine* vm, const char* source) {
   Scanner scanner;
   initScanner(&scanner, source);
 

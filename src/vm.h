@@ -4,12 +4,20 @@
 #include "bytechunk.h"
 #include "value.h"
 #include "table.h"
+#include "object.h"
 
-#define STACK_MAX 256
+#define FRAMES_MAX 64
+#define STACK_MAX (FRAME_MAX * UINT8_COUNT)
+
+typedef struct {
+  ObjFunction* function;
+  uint8_t* ip;
+  Value* slots;
+} CallFrame;
 
 struct VirtualMachine_Struct{
-  ByteChunk* chunk;
-  uint8_t* ip;
+  CallFrame frames[FRAMES_MAX];
+  int frameCount;
 
   // Stack 
   Value* stack;

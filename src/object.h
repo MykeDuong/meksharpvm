@@ -4,7 +4,6 @@
 #include "common.h"
 #include "memory.h"
 #include "value.h"
-#include "vm.h"
 #include "bytechunk.h"
 
 #define OBJECT_TYPE(value)         (AS_OBJECT(value)->type)
