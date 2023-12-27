@@ -7,6 +7,6 @@
 #include "vm.h"
 #include "object.h"
 
-bool compile(VirtualMachine* vm, ByteChunk* chunk, const char* source);
+ObjFunction* compile(VirtualMachine* vm, ByteChunk* chunk, const char* source);
 
 #endif 

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <sys/types.h>
 
+#include "bytechunk.h"
 #include "memory.h"
 #include "object.h"
 #include "value.h"
@@ -48,6 +49,16 @@ uint32_t hashValue(Value value) {
   }
 }
 
+
+ObjFunction* newFunction(VirtualMachine* vm) {
+  ObjFunction* function = ALLOCATE_OBJECT(vm, ObjFunction, OBJ_FUNCTION);  
+  function->arity = 0;
+  function->name = NULL;
+  initChunk(&function->chunk);
+  return function;
+}
+
+
 ObjString* createString(VirtualMachine* vm, const char* chars, int length) {
   uint32_t hash = hashString(chars, length);
 
@@ -80,9 +91,19 @@ ObjString* createConstantString(VirtualMachine* vm, const char* chars, int lengt
   return string;  
 }
 
+void printFunction(ObjFunction* function) {
+  if (function->name == NULL) {
+    printf("<script>");
+    return;
+  }
+  printf("<fn %.*s>", function->name->length, function->name->chars);
+}
 
 void printObject(Value value) {
   switch (OBJECT_TYPE(value)) {
+    case OBJ_FUNCTION:
+      printFunction(AS_FUNCTION(value));
+      break;
     case OBJ_STRING:
       printf("%.*s", AS_STRING(value)->length, AS_CSTRING(value));
       break;
