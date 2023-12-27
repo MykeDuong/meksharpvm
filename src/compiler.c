@@ -499,6 +499,58 @@ static void expressionStatement(VirtualMachine* vm, Compiler* currentCompiler, P
   emitByte(parser, compilingChunk, OP_POP);
 }
 
+static void forStatement(VirtualMachine* vm, Compiler* currentCompiler, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
+  beginScope(currentCompiler);
+
+  consume(parser, scanner, TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
+  
+  /* Initializer clause */
+  if (match(parser, scanner, TOKEN_SEMICOLON)) {
+    // No initializer clause 
+  } else if (match(parser, scanner, TOKEN_VAR)) {
+    varDeclaration(vm, currentCompiler, parser, scanner, compilingChunk);
+  } else {
+    expressionStatement(vm, currentCompiler, parser, scanner, compilingChunk);
+  }
+
+  int loopStart = compilingChunk->count;
+
+  int exitJump = -1;
+
+  /* Loop condition clause */
+  if (!match(parser, scanner, TOKEN_SEMICOLON)) {
+    expression(vm, currentCompiler, parser, scanner, compilingChunk);
+    consume(parser, scanner, TOKEN_SEMICOLON, "Expect ';' after loop condition.");
+
+    // Jump out of loop if the condition is false
+    exitJump = emitJump(parser, compilingChunk, OP_JUMP_IF_FALSE);
+    emitByte(parser, compilingChunk, OP_POP);
+  }
+
+  if (!match(parser, scanner, TOKEN_RIGHT_PAREN)) {
+    int bodyJump = emitJump(parser, compilingChunk, OP_JUMP);
+    int incrementStart = compilingChunk->count;
+    expression(vm, currentCompiler, parser, scanner, compilingChunk);
+    emitByte(parser, compilingChunk, OP_POP);
+    consume(parser, scanner, TOKEN_RIGHT_PAREN, "Expect ')' after 'for' clause.");
+
+    emitLoop(parser, compilingChunk, loopStart);
+    loopStart = incrementStart;
+    patchJump(parser, compilingChunk, bodyJump);
+  }
+
+  statement(vm, currentCompiler, parser, scanner, compilingChunk);
+  emitLoop(parser, compilingChunk, loopStart);
+ 
+  /* Patch the loop condition (exit) jump */
+  if (exitJump != -1) {
+    patchJump(parser, compilingChunk, exitJump);
+    emitByte(parser, compilingChunk, OP_POP);
+  }
+
+  endScope(currentCompiler, parser, compilingChunk);
+}
+
 static void ifStatement(VirtualMachine* vm, Compiler* currentCompiler, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
   consume(parser, scanner, TOKEN_LEFT_PAREN, "Expected '(' after 'if'.");
   expression(vm, currentCompiler, parser, scanner, compilingChunk);
@@ -586,7 +638,9 @@ static void declaration(VirtualMachine* vm, Compiler* currentCompiler, Parser* p
 static void statement(VirtualMachine* vm, Compiler* currentCompiler, Parser* parser, Scanner* scanner, ByteChunk* compilingChunk) {
   if (match(parser, scanner, TOKEN_PRINT)) {
     printStatement(vm, currentCompiler, parser, scanner, compilingChunk);
-  } else if (match(parser, scanner, TOKEN_IF)) {
+  } else if (match(parser, scanner, TOKEN_FOR)) {
+    forStatement(vm, currentCompiler, parser, scanner, compilingChunk);
+  }else if (match(parser, scanner, TOKEN_IF)) {
     ifStatement(vm, currentCompiler, parser, scanner, compilingChunk);
   } else if (match(parser, scanner, TOKEN_WHILE)) {
     whileStatement(vm, currentCompiler, parser, scanner, compilingChunk);
