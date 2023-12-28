@@ -59,6 +59,11 @@ ObjFunction* newFunction(VirtualMachine* vm) {
   return function;
 }
 
+ObjNative* newNative(VirtualMachine* vm, NativeFn function) {
+  ObjNative* native = ALLOCATE_OBJECT(vm, ObjNative, OBJ_NATIVE); 
+  native->function = function;
+  return native;
+}
 
 ObjString* createString(VirtualMachine* vm, const char* chars, int length) {
   uint32_t hash = hashString(chars, length);
@@ -104,6 +109,9 @@ void printObject(Value value) {
   switch (OBJECT_TYPE(value)) {
     case OBJ_FUNCTION:
       printFunction(AS_FUNCTION(value));
+      break;
+    case OBJ_NATIVE:
+      printf("<native fn>");
       break;
     case OBJ_STRING:
       printf("%.*s", AS_STRING(value)->length, AS_CSTRING(value));

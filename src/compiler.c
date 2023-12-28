@@ -1,4 +1,3 @@
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -159,6 +158,7 @@ static int emitJump(Compiler* currentCompiler, Parser* parser, uint8_t instructi
 }
 
 static void emitReturn(Compiler* currentCompiler, Parser* parser) {
+  emitByte(currentCompiler, parser, OP_NAH);
   emitByte(currentCompiler, parser, OP_RETURN);
 }
 
@@ -313,6 +313,22 @@ static void defineVariable(Compiler* currentCompiler, Parser* parser, uint8_t gl
   emitBytes(currentCompiler, parser, OP_DEFINE_GLOBAL, global);
 }
 
+static uint8_t argumentList(VirtualMachine* vm, Compiler* currentCompiler, Parser* parser, Scanner* scanner) {
+  uint8_t argCount = 0;
+
+  if (!check(parser, TOKEN_RIGHT_PAREN)) {
+    do {
+      expression(vm, currentCompiler, parser, scanner);
+      if (argCount == 255) {
+        error(parser, "Cannot have more than 255 arguments.");
+      }
+      argCount++;
+    } while (match(parser, scanner, TOKEN_COMMA));
+  }
+  consume(parser, scanner, TOKEN_RIGHT_PAREN, "Expect ')' after arguments.");
+  return argCount;
+}
+
 static void and_(VirtualMachine* vm, Compiler* currentCompiler, Parser* parser, Scanner* scanner, bool canAssign) {
   int endJump = emitJump(currentCompiler, parser, OP_JUMP_IF_FALSE);
 
@@ -340,6 +356,11 @@ static void binary(VirtualMachine* vm, Compiler* currentCompiler, Parser* parser
     case TOKEN_SLASH:          emitByte(currentCompiler, parser, OP_DIVIDE); break;
     default: return; // unreachable
   }
+}
+
+static void call(VirtualMachine* vm, Compiler* currentCompiler, Parser* parser, Scanner* scanner, bool canAssign) {
+  uint8_t argCount = argumentList(vm, currentCompiler, parser, scanner);
+  emitBytes(currentCompiler, parser, OP_CALL, argCount);
 }
 
 static void literal(VirtualMachine* vm, Compiler* currentCompiler, Parser* parser, Scanner* scanner, bool canAssign) {
@@ -419,7 +440,7 @@ static void variable(VirtualMachine* vm, Compiler* currentCompiler, Parser* pars
 }
 
 ParseRule rules[] = {
-  [TOKEN_LEFT_PAREN]        = { grouping, NULL,     PREC_NONE },
+  [TOKEN_LEFT_PAREN]        = { grouping, call,     PREC_CALL },
   [TOKEN_RIGHT_PAREN]       = { NULL,     NULL,     PREC_NONE },
   [TOKEN_LEFT_BRACE]        = { NULL,     NULL,     PREC_NONE },
   [TOKEN_RIGHT_BRACE]       = { NULL,     NULL,     PREC_NONE },
@@ -498,7 +519,7 @@ static void block(VirtualMachine* vm, Compiler* currentCompiler, Parser* parser,
     declaration(vm, currentCompiler, parser, scanner);
   }
 
-  consume(parser, scanner, TOKEN_RIGHT_BRACE, "Expect '}' aafter block.");
+  consume(parser, scanner, TOKEN_RIGHT_BRACE, "Expect '}' after block.");
 }
 
 static void function(VirtualMachine* vm, Compiler* currentCompiler, Parser* parser, Scanner* scanner, FunctionType type) {
@@ -643,6 +664,23 @@ static void printStatement(
   emitByte(currentCompiler, parser, OP_PRINT);
 }
 
+static void returnStatement(
+    VirtualMachine* vm, Compiler* currentCompiler, 
+    Parser* parser, Scanner* scanner
+) {
+  if (currentCompiler->type == TYPE_SCRIPT) {
+    error(parser, "Cannot return from top-level code.");
+  }
+
+  if (match(parser, scanner, TOKEN_SEMICOLON)) {
+    emitReturn(currentCompiler, parser);
+  } else {
+    expression(vm, currentCompiler, parser, scanner);
+    consume(parser, scanner, TOKEN_SEMICOLON, "Expect ';' after return value.");
+    emitByte(currentCompiler, parser, OP_RETURN);
+  }
+}
+
 static void whileStatement(
     VirtualMachine* vm, Compiler* currentCompiler, 
     Parser* parser, Scanner* scanner
@@ -703,9 +741,11 @@ static void statement(VirtualMachine* vm, Compiler* currentCompiler, Parser* par
     printStatement(vm, currentCompiler, parser, scanner);
   } else if (match(parser, scanner, TOKEN_FOR)) {
     forStatement(vm, currentCompiler, parser, scanner);
-  }else if (match(parser, scanner, TOKEN_IF)) {
+  } else if (match(parser, scanner, TOKEN_IF)) {
     ifStatement(vm, currentCompiler, parser, scanner);
-  } else if (match(parser, scanner, TOKEN_WHILE)) {
+  } else if (match(parser, scanner, TOKEN_RETURN)) {
+    returnStatement(vm, currentCompiler, parser, scanner);
+  }else if (match(parser, scanner, TOKEN_WHILE)) {
     whileStatement(vm, currentCompiler, parser, scanner);
   } else if (match(parser, scanner, TOKEN_LEFT_BRACE)) {
     beginScope(currentCompiler);

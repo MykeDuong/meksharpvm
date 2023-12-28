@@ -1,7 +1,8 @@
-#include <stdint.h>
+#include <time.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+
 
 #include "bytechunk.h"
 #include "common.h"
@@ -12,6 +13,10 @@
 #include "value.h"
 #include "vm.h"
 #include "compiler.h"
+
+static Value clockNative(int argCount, Value* args) {
+  return NUMBER_VAL((double)clock() / CLOCKS_PER_SEC);
+}
 
 static void resetStack(VirtualMachine* vm) {
   vm->stackTop = vm->stack;
@@ -25,11 +30,28 @@ static void runtimeError(VirtualMachine* vm, const char* format, ...) {
   va_end(args);
   fputs("\n", stderr);
 
-  CallFrame* frame = &vm->frames[vm->frameCount - 1];
-  size_t instruction = frame->ip - frame->function->chunk.code - 1;
-  int line = frame->function->chunk.lines[instruction];
-  fprintf(stderr, "[line %d] in script\n", line);
+  for (int i = vm->frameCount - 1; i >= 0; i--) {
+    CallFrame* frame=  &vm->frames[i];
+    ObjFunction* function = frame->function;
+    size_t instruction = frame->ip - function->chunk.code - 1;
+    fprintf(stderr, "[line %d] in ", getLine(&function->chunk, instruction)); 
+    
+    if (function->name == NULL) {
+      fprintf(stderr, "script\n");
+    } else {
+      fprintf(stderr, "%.*s()\n", function->name->length, function->name->chars);
+    }
+  }
+
   resetStack(vm);
+}
+
+static void defineNative(VirtualMachine* vm, const char* name, NativeFn function) {
+  push(vm, OBJECT_VAL(createString(vm, name, (int)strlen(name))));
+  push(vm, OBJECT_VAL(newNative(vm, function)));
+  tableSet(&vm->globals, vm->stack[0], vm->stack[1]);
+  pop(vm);
+  pop(vm);
 }
 
 void initVM(VirtualMachine* vm) {
@@ -39,6 +61,7 @@ void initVM(VirtualMachine* vm) {
   vm->objects = NULL;
   initTable(&vm->strings);
   initTable(&vm->globals);
+  defineNative(vm, "clock", clockNative);
 }
 
 void freeVM(VirtualMachine* vm) {
@@ -70,6 +93,44 @@ Value pop(VirtualMachine* vm) {
 
 static Value peek(VirtualMachine* vm, int distance) {
   return vm->stackTop[-1-distance];
+}
+
+static bool call(VirtualMachine* vm, ObjFunction* function, int argCount) {
+  if (argCount != function->arity) {
+    runtimeError(vm, "Expected %d arguments, but got %d.", function->arity, argCount);
+    return false;
+  }
+
+  if (vm->frameCount == FRAMES_MAX) {
+    runtimeError(vm, "Stack Overflow.");
+    return false;
+  }
+
+  CallFrame* frame = &vm->frames[vm->frameCount++];
+  frame->function = function;
+  frame->ip = function->chunk.code;
+  frame->slots = vm->stackTop - argCount - 1;
+  return true;
+}
+
+static bool callValue(VirtualMachine* vm, Value callee, int argCount) {
+  if (IS_OBJECT(callee)) {
+    switch (OBJECT_TYPE(callee)) {
+      case OBJ_FUNCTION:
+        return call(vm, AS_FUNCTION(callee), argCount);
+      case OBJ_NATIVE: {
+        NativeFn native = AS_NATIVE(callee);
+        Value result = native(argCount, vm->stackTop - argCount);
+        vm->stackTop -= argCount + 1;
+        push(vm, result);
+        return true;
+      }
+      default:
+        break;
+    }
+  }
+  runtimeError(vm, "Can only call functions and classes.");
+  return false;
 }
 
 static bool isFalsey(Value value) {
@@ -121,7 +182,7 @@ static InterpretResult run(VirtualMachine* vm) {
       printf(" ]");
     }
     printf("\n");
-    disassembleInstruction(&frame->function->chunk, (int)(frame->ip - frame->function->chunk->code));
+    disassembleInstruction(&frame->function->chunk, (int)(frame->ip - frame->function->chunk.code));
 #endif
     uint8_t instruction;
     switch (instruction = READ_BYTE()) {
@@ -230,9 +291,26 @@ static InterpretResult run(VirtualMachine* vm) {
         frame->ip -= offset;
         break;
       }
+      case OP_CALL: {
+        int argCount = READ_BYTE();
+        if (!callValue(vm, peek(vm, argCount), argCount)) {
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        frame = &vm->frames[vm->frameCount - 1];
+        break;
+      }
       case OP_RETURN: {
-        // Exit interpreter
-        return INTERPRET_OK;
+        Value result = pop(vm);
+        vm->frameCount--;
+        if (vm->frameCount == 0) {
+          pop(vm);
+          return INTERPRET_OK;
+        }
+
+        vm->stackTop = frame->slots;
+        push(vm, result);
+        frame = &vm->frames[vm->frameCount - 1];
+        break;
       }
     }
   }
@@ -249,10 +327,7 @@ InterpretResult interpret(VirtualMachine* vm, const char* source) {
   if (function == NULL) return INTERPRET_COMPILE_ERROR;
 
   push(vm, OBJECT_VAL(function));
-  CallFrame* frame = &vm->frames[vm->frameCount++];
-  frame->function = function;
-  frame->ip = function->chunk.code;
-  frame->slots = vm->stack;
+  call(vm, function, 0);
 
   return run(vm);
 

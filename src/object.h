@@ -9,14 +9,17 @@
 #define OBJECT_TYPE(value)         (AS_OBJECT(value)->type)
 
 #define IS_FUNCTION(VALUE)         isObjectType(value, OBJ_FUNCTION)
+#define IS_NATIVE(value)           isObjectType(value, OBJ_NATIVE)
 #define IS_STRING(value)           isObjectType(value, OBJ_STRING)
 
 #define AS_FUNCTION(value)         ((ObjFunction*)AS_OBJECT(value))
+#define AS_NATIVE(value)           (((ObjNative*)AS_OBJECT(value))->function)
 #define AS_STRING(value)           ((ObjString*)AS_OBJECT(value))
 #define AS_CSTRING(value)          (((ObjString*)AS_OBJECT(value))->chars)
 
 typedef enum {
   OBJ_FUNCTION,
+  OBJ_NATIVE,
   OBJ_STRING,
 } ObjectType;
 
@@ -32,6 +35,13 @@ typedef struct {
   ObjString* name;
 } ObjFunction;
 
+typedef Value (*NativeFn)(int argCount, Value* args);
+
+typedef struct {
+  Object object;
+  NativeFn function;
+} ObjNative;
+
 struct ObjString {
   Object object;
   bool isConstant;
@@ -42,6 +52,7 @@ struct ObjString {
 };
 
 ObjFunction* newFunction(VirtualMachine* vm);
+ObjNative* newNative(VirtualMachine* vm, NativeFn function);
 ObjString* createString(VirtualMachine* vm, const char* chars, int length);
 ObjString* createConstantString(VirtualMachine* vm, const char* chars, int length);
 ObjString* completeString(VirtualMachine* vm, ObjString* string);
