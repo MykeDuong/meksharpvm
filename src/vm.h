@@ -12,7 +12,7 @@
 typedef struct {
   ObjFunction* function;
   uint8_t* ip;
-  Value* slots;
+  int slots;
 } CallFrame;
 
 struct VirtualMachine_Struct{

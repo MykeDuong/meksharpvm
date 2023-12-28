@@ -109,7 +109,7 @@ static bool call(VirtualMachine* vm, ObjFunction* function, int argCount) {
   CallFrame* frame = &vm->frames[vm->frameCount++];
   frame->function = function;
   frame->ip = function->chunk.code;
-  frame->slots = vm->stackTop - argCount - 1;
+  frame->slots = vm->stackTop - vm->stack - argCount - 1;
   return true;
 }
 
@@ -202,12 +202,12 @@ static InterpretResult run(VirtualMachine* vm) {
       case OP_POP: pop(vm); break;
       case OP_GET_LOCAL: {
         uint8_t slot = READ_BYTE();
-        push(vm, frame->slots[slot]);
+        push(vm, vm->stack[frame->slots  + slot]);
         break;
       }
       case OP_SET_LOCAL: {
         uint8_t slot = READ_BYTE();
-        frame->slots[slot] = peek(vm, 0);
+        vm->stack[frame->slots  + slot] = peek(vm, 0);
         break;
       }
       case OP_GET_GLOBAL: {
@@ -307,7 +307,7 @@ static InterpretResult run(VirtualMachine* vm) {
           return INTERPRET_OK;
         }
 
-        vm->stackTop = frame->slots;
+        vm->stackTop = &vm->stack[frame->slots];
         push(vm, result);
         frame = &vm->frames[vm->frameCount - 1];
         break;
