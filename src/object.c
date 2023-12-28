@@ -3,6 +3,7 @@
 #include <sys/types.h>
 
 #include "bytechunk.h"
+#include "debug.h"
 #include "memory.h"
 #include "object.h"
 #include "value.h"

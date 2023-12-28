@@ -34,7 +34,8 @@ typedef enum {
   TYPE_SCRIPT,
 } FunctionType;
 
-typedef struct {
+typedef struct Compiler {
+  struct Compiler* enclosing;
   ObjFunction* function;
   FunctionType type;
 
@@ -176,12 +177,19 @@ static void patchJump(Compiler* currentCompiler, Parser* parser, int offset) {
   currentChunk(currentCompiler)->code[offset + 1] = jump & 0xFF;
 }
 
-static void initCompiler(VirtualMachine* vm, Compiler* compiler, FunctionType type) {
+static void initCompiler(VirtualMachine* vm, Parser* parser, Compiler* compiler, Compiler* enclosing, FunctionType type) {
+  compiler->enclosing = enclosing;
   compiler->function = NULL;
   compiler->type = type;
   compiler->localCount = 0;
   compiler->scopeDepth = 0;
   compiler->function = newFunction(vm);
+
+  if (type != TYPE_SCRIPT) {
+    compiler->function->name = createString(vm, parser->previous.start, parser->previous.length);
+    printf("happened\n");
+    printf("%.*s\n", compiler->function->name->length, compiler->function->name->chars);
+  }
 
   Local* local = &compiler->locals[compiler->localCount++];
   local->depth = 0;
@@ -295,6 +303,7 @@ static uint8_t parseVariable(
 }
 
 static void markInitialized(Compiler* currentCompiler) {
+  if (currentCompiler->scopeDepth == 0) return;
   currentCompiler->locals[currentCompiler->localCount - 1].depth = currentCompiler->scopeDepth;
 }
 
@@ -486,13 +495,49 @@ static void expression(VirtualMachine* vm, Compiler* currentCompiler, Parser* pa
   parsePrecedence(vm, currentCompiler, parser, scanner,  PREC_ASSIGNMENT);
 }
 
-static void block(VirtualMachine* vm, Compiler* compiler, Parser* parser, Scanner* scanner) {
+static void block(VirtualMachine* vm, Compiler* currentCompiler, Parser* parser, Scanner* scanner) {
   while (!check(parser, TOKEN_RIGHT_BRACE) && !check(parser, TOKEN_EOF)) {
-    declaration(vm, compiler, parser, scanner);
+    declaration(vm, currentCompiler, parser, scanner);
   }
 
   consume(parser, scanner, TOKEN_RIGHT_BRACE, "Expect '}' aafter block.");
 }
+
+static void function(VirtualMachine* vm, Compiler* currentCompiler, Parser* parser, Scanner* scanner, FunctionType type) {
+  Compiler compiler;
+  initCompiler(vm, parser, &compiler, currentCompiler, type);
+  beginScope(&compiler);
+
+  consume(parser, scanner, TOKEN_LEFT_PAREN, "Expect '(' after function name.");
+
+  if (!check(parser, TOKEN_RIGHT_PAREN)) {
+    do {
+      currentCompiler->function->arity++;
+      if (currentCompiler->function->arity > 255) {
+        errorAtCurrent(parser, "Cannot have more than 255 parameters.");
+      }
+      uint8_t constant = parseVariable(vm, currentCompiler, parser, scanner, "Expect parameter name.");
+      defineVariable(currentCompiler, parser, constant);
+    } while (match(parser, scanner, TOKEN_COMMA));
+  }
+
+  consume(parser, scanner, TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
+  consume(parser, scanner, TOKEN_LEFT_BRACE, "Expect '{' before function body."); 
+  block(vm, &compiler, parser, scanner);
+
+  ObjFunction* function = endCompiler(&compiler, parser);
+
+  emitConstant(currentCompiler, parser, OBJECT_VAL(function));
+}
+
+static void funDeclaration(VirtualMachine* vm, Compiler* currentCompiler, Parser* parser, Scanner* scanner) {
+  uint8_t global = parseVariable(vm, currentCompiler, parser, scanner, "Expect function name.");
+  printf("%d\n", global);
+  markInitialized(currentCompiler);
+  function(vm, currentCompiler, parser, scanner, TYPE_FUNCTION);
+  defineVariable(currentCompiler, parser, global);
+}
+
 
 static void varDeclaration(
     VirtualMachine* vm, Compiler* currentCompiler, Parser* parser, Scanner* scanner
@@ -642,7 +687,9 @@ static void synchronize(Parser* parser, Scanner* scanner) {
 }
 
 static void declaration(VirtualMachine* vm, Compiler* currentCompiler, Parser* parser, Scanner* scanner) {
-  if (match(parser, scanner, TOKEN_VAR)) {
+  if (match(parser, scanner, TOKEN_FUN)) {
+    funDeclaration(vm, currentCompiler, parser, scanner);
+  } else if (match(parser, scanner, TOKEN_VAR)) {
     varDeclaration(vm, currentCompiler, parser, scanner);
   } else {
     statement(vm, currentCompiler, parser, scanner);
@@ -678,7 +725,7 @@ ObjFunction* compile(VirtualMachine* vm, const char* source) {
   parser.panicMode = false;
   
   Compiler compiler;
-  initCompiler(vm, &compiler, TYPE_SCRIPT);
+  initCompiler(vm, &parser, &compiler, NULL, TYPE_SCRIPT);
 
   advance(&parser, &scanner);
 
