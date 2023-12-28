@@ -187,8 +187,6 @@ static void initCompiler(VirtualMachine* vm, Parser* parser, Compiler* compiler,
 
   if (type != TYPE_SCRIPT) {
     compiler->function->name = createString(vm, parser->previous.start, parser->previous.length);
-    printf("happened\n");
-    printf("%.*s\n", compiler->function->name->length, compiler->function->name->chars);
   }
 
   Local* local = &compiler->locals[compiler->localCount++];
@@ -508,16 +506,17 @@ static void function(VirtualMachine* vm, Compiler* currentCompiler, Parser* pars
   initCompiler(vm, parser, &compiler, currentCompiler, type);
   beginScope(&compiler);
 
+  /* Begin using new compiler */
   consume(parser, scanner, TOKEN_LEFT_PAREN, "Expect '(' after function name.");
 
   if (!check(parser, TOKEN_RIGHT_PAREN)) {
     do {
-      currentCompiler->function->arity++;
-      if (currentCompiler->function->arity > 255) {
+      compiler.function->arity++;
+      if (compiler.function->arity > 255) {
         errorAtCurrent(parser, "Cannot have more than 255 parameters.");
       }
-      uint8_t constant = parseVariable(vm, currentCompiler, parser, scanner, "Expect parameter name.");
-      defineVariable(currentCompiler, parser, constant);
+      uint8_t constant = parseVariable(vm, &compiler, parser, scanner, "Expect parameter name.");
+      defineVariable(&compiler, parser, constant);
     } while (match(parser, scanner, TOKEN_COMMA));
   }
 
@@ -527,12 +526,13 @@ static void function(VirtualMachine* vm, Compiler* currentCompiler, Parser* pars
 
   ObjFunction* function = endCompiler(&compiler, parser);
 
+  /* End using new compiler */
+
   emitConstant(currentCompiler, parser, OBJECT_VAL(function));
 }
 
 static void funDeclaration(VirtualMachine* vm, Compiler* currentCompiler, Parser* parser, Scanner* scanner) {
   uint8_t global = parseVariable(vm, currentCompiler, parser, scanner, "Expect function name.");
-  printf("%d\n", global);
   markInitialized(currentCompiler);
   function(vm, currentCompiler, parser, scanner, TYPE_FUNCTION);
   defineVariable(currentCompiler, parser, global);

@@ -1,4 +1,4 @@
-fun areWeHavingItYet() {
+fun areWeHavingItYet(x, y) {
   print "Yes we are!";
 }
 
