@@ -8,16 +8,19 @@
 
 #define OBJECT_TYPE(value)         (AS_OBJECT(value)->type)
 
-#define IS_FUNCTION(VALUE)         isObjectType(value, OBJ_FUNCTION)
+#define IS_CLOSURE(value)          isObjectType(value, OBJ_CLOSURE)
+#define IS_FUNCTION(value)         isObjectType(value, OBJ_FUNCTION)
 #define IS_NATIVE(value)           isObjectType(value, OBJ_NATIVE)
 #define IS_STRING(value)           isObjectType(value, OBJ_STRING)
 
+#define AS_CLOSURE(value)          ((ObjClosure*)AS_OBJECT(value))
 #define AS_FUNCTION(value)         ((ObjFunction*)AS_OBJECT(value))
 #define AS_NATIVE(value)           (((ObjNative*)AS_OBJECT(value))->function)
 #define AS_STRING(value)           ((ObjString*)AS_OBJECT(value))
 #define AS_CSTRING(value)          (((ObjString*)AS_OBJECT(value))->chars)
 
 typedef enum {
+  OBJ_CLOSURE,
   OBJ_FUNCTION,
   OBJ_NATIVE,
   OBJ_STRING,
@@ -51,6 +54,13 @@ struct ObjString {
   char storage[];
 };
 
+typedef struct {
+  Object object;
+  ObjFunction* function;
+} ObjClosure;
+
+
+ObjClosure* newClosure(VirtualMachine* vm, ObjFunction* function);
 ObjFunction* newFunction(VirtualMachine* vm);
 ObjNative* newNative(VirtualMachine* vm, NativeFn function);
 ObjString* createString(VirtualMachine* vm, const char* chars, int length);

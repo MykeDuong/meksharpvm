@@ -32,7 +32,7 @@ static void runtimeError(VirtualMachine* vm, const char* format, ...) {
 
   for (int i = vm->frameCount - 1; i >= 0; i--) {
     CallFrame* frame=  &vm->frames[i];
-    ObjFunction* function = frame->function;
+    ObjFunction* function = frame->closure->function;
     size_t instruction = frame->ip - function->chunk.code - 1;
     fprintf(stderr, "[line %d] in ", getLine(&function->chunk, instruction)); 
     
@@ -95,9 +95,9 @@ static Value peek(VirtualMachine* vm, int distance) {
   return vm->stackTop[-1-distance];
 }
 
-static bool call(VirtualMachine* vm, ObjFunction* function, int argCount) {
-  if (argCount != function->arity) {
-    runtimeError(vm, "Expected %d arguments, but got %d.", function->arity, argCount);
+static bool call(VirtualMachine* vm, ObjClosure* closure, int argCount) {
+  if (argCount != closure->function->arity) {
+    runtimeError(vm, "Expected %d arguments, but got %d.", closure->function->arity, argCount);
     return false;
   }
 
@@ -107,8 +107,8 @@ static bool call(VirtualMachine* vm, ObjFunction* function, int argCount) {
   }
 
   CallFrame* frame = &vm->frames[vm->frameCount++];
-  frame->function = function;
-  frame->ip = function->chunk.code;
+  frame->closure = closure;
+  frame->ip = closure->function->chunk.code;
   frame->slots = vm->stackTop - vm->stack - argCount - 1;
   return true;
 }
@@ -116,8 +116,8 @@ static bool call(VirtualMachine* vm, ObjFunction* function, int argCount) {
 static bool callValue(VirtualMachine* vm, Value callee, int argCount) {
   if (IS_OBJECT(callee)) {
     switch (OBJECT_TYPE(callee)) {
-      case OBJ_FUNCTION:
-        return call(vm, AS_FUNCTION(callee), argCount);
+      case OBJ_CLOSURE:
+        return call(vm, AS_CLOSURE(callee), argCount);
       case OBJ_NATIVE: {
         NativeFn native = AS_NATIVE(callee);
         Value result = native(argCount, vm->stackTop - argCount);
@@ -155,9 +155,9 @@ static InterpretResult run(VirtualMachine* vm) {
   CallFrame* frame = &vm->frames[vm->frameCount - 1];
 
 #define READ_BYTE() (*frame->ip++)
-#define READ_CONSTANT() (frame->function->chunk.constants.values[READ_BYTE()])
+#define READ_CONSTANT() (frame->closure->function->chunk.constants.values[READ_BYTE()])
 #define READ_CONSTANT_LONG() \
-  ((frame->function->chunk.constants.values[READ_BYTE() | (READ_BYTE() << 8) | (READ_BYTE() << 16)]))
+  ((frame->closure->function->chunk.constants.values[READ_BYTE() | (READ_BYTE() << 8) | (READ_BYTE() << 16)]))
 #define READ_SHORT() \
   (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
 #define READ_STRING() AS_STRING(READ_CONSTANT())
@@ -182,7 +182,7 @@ static InterpretResult run(VirtualMachine* vm) {
       printf(" ]");
     }
     printf("\n");
-    disassembleInstruction(&frame->function->chunk, (int)(frame->ip - frame->function->chunk.code));
+    disassembleInstruction(&frame->closure->function->chunk, (int)(frame->ip - frame->closure->function->chunk.code));
 #endif
     uint8_t instruction;
     switch (instruction = READ_BYTE()) {
@@ -299,6 +299,12 @@ static InterpretResult run(VirtualMachine* vm) {
         frame = &vm->frames[vm->frameCount - 1];
         break;
       }
+      case OP_CLOSURE: {
+        ObjFunction* function = AS_FUNCTION(READ_CONSTANT());
+        ObjClosure* closure = newClosure(vm, function);
+        push(vm, OBJECT_VAL(closure));
+        break;
+      }
       case OP_RETURN: {
         Value result = pop(vm);
         vm->frameCount--;
@@ -327,7 +333,10 @@ InterpretResult interpret(VirtualMachine* vm, const char* source) {
   if (function == NULL) return INTERPRET_COMPILE_ERROR;
 
   push(vm, OBJECT_VAL(function));
-  call(vm, function, 0);
+  ObjClosure* closure = newClosure(vm, function);
+  pop(vm);
+  push(vm, OBJECT_VAL(closure));
+  call(vm, closure, 0);
 
   return run(vm);
 

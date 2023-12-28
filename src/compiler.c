@@ -548,8 +548,7 @@ static void function(VirtualMachine* vm, Compiler* currentCompiler, Parser* pars
   ObjFunction* function = endCompiler(&compiler, parser);
 
   /* End using new compiler */
-
-  emitConstant(currentCompiler, parser, OBJECT_VAL(function));
+  emitBytes(currentCompiler, parser, OP_CLOSURE, addConstant(currentChunk(currentCompiler), OBJECT_VAL(function)));
 }
 
 static void funDeclaration(VirtualMachine* vm, Compiler* currentCompiler, Parser* parser, Scanner* scanner) {

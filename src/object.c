@@ -50,6 +50,11 @@ uint32_t hashValue(Value value) {
   }
 }
 
+ObjClosure* newClosure(VirtualMachine* vm, ObjFunction* function) {
+  ObjClosure* closure = ALLOCATE_OBJECT(vm, ObjClosure, OBJ_CLOSURE);
+  closure->function = function;
+  return closure;
+}
 
 ObjFunction* newFunction(VirtualMachine* vm) {
   ObjFunction* function = ALLOCATE_OBJECT(vm, ObjFunction, OBJ_FUNCTION);  
@@ -107,6 +112,9 @@ void printFunction(ObjFunction* function) {
 
 void printObject(Value value) {
   switch (OBJECT_TYPE(value)) {
+    case OBJ_CLOSURE:
+      printFunction(AS_CLOSURE(value)->function);
+      break;
     case OBJ_FUNCTION:
       printFunction(AS_FUNCTION(value));
       break;
