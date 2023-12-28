@@ -1,3 +1,5 @@
+#include <_types/_uint8_t.h>
+#include <stdint.h>
 #include <time.h>
 #include <stdio.h>
 #include <string.h>
@@ -55,8 +57,8 @@ static void defineNative(VirtualMachine* vm, const char* name, NativeFn function
 }
 
 void initVM(VirtualMachine* vm) {
-  vm->stack = NULL;
-  vm->stackCapacity = 0;
+  vm->stack = ALLOCATE(Value, UINT8_COUNT);
+  vm->stackCapacity = UINT8_COUNT;
   resetStack(vm);
   vm->objects = NULL;
   initTable(&vm->strings);
@@ -131,6 +133,11 @@ static bool callValue(VirtualMachine* vm, Value callee, int argCount) {
   }
   runtimeError(vm, "Can only call functions and classes.");
   return false;
+}
+
+static ObjUpvalue* captureUpvalue(VirtualMachine* vm, Value* local) {
+  ObjUpvalue* createdUpvalue = newUpvalue(vm, local);
+  return createdUpvalue;
 }
 
 static bool isFalsey(Value value) {
@@ -237,6 +244,16 @@ static InterpretResult run(VirtualMachine* vm) {
         }
         break;
       }
+      case OP_GET_UPVALUE: {
+        uint8_t slot = READ_BYTE();
+        push(vm, *frame->closure->upvalues[slot]->location);
+        break;
+      }
+      case OP_SET_UPVALUE: {
+        uint8_t slot = READ_BYTE();
+        *frame->closure->upvalues[slot]->location = peek(vm, 0);
+        break;
+      }
       case OP_EQUAL: {
         Value b = pop(vm);
         Value a = pop(vm);
@@ -303,6 +320,18 @@ static InterpretResult run(VirtualMachine* vm) {
         ObjFunction* function = AS_FUNCTION(READ_CONSTANT());
         ObjClosure* closure = newClosure(vm, function);
         push(vm, OBJECT_VAL(closure));
+
+        for (int i = 0; i < closure->upvalueCount; i++) {
+          uint8_t isLocal = READ_BYTE();
+          uint8_t index = READ_BYTE();
+          if (isLocal) {
+            closure->upvalues[i] = captureUpvalue(vm, &vm->stack[frame->slots + index]);
+          } else {
+            printf("%d\n", frame->closure->upvalueCount);
+            closure->upvalues[i] = frame->closure->upvalues[index];
+          }
+        }
+
         break;
       }
       case OP_RETURN: {

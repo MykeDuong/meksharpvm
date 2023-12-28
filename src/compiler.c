@@ -282,7 +282,7 @@ static int addUpvalue(Compiler* currentCompiler, Parser* parser, uint8_t index, 
     error(parser, "Too many closure variables in function.");
     return 0;
   }
-
+  
   currentCompiler->upvalues[upvalueCount].isLocal = isLocal;
   currentCompiler->upvalues[upvalueCount].index = index;
   return currentCompiler->function->upvalueCount++;
@@ -291,7 +291,6 @@ static int addUpvalue(Compiler* currentCompiler, Parser* parser, uint8_t index, 
 static int resolveUpvalue(Compiler* currentCompiler, Parser* parser, Token* name) {
   if (currentCompiler->enclosing == NULL) return -1;
   int local = resolveLocal(currentCompiler->enclosing, parser, name);
-
   if (local != -1) {
     return addUpvalue(currentCompiler, parser, (uint8_t)local, true);
   }
@@ -461,6 +460,7 @@ static void string(VirtualMachine* vm, Compiler* currentCompiler, Parser* parser
 
 static void namedVariable(VirtualMachine* vm, Compiler* currentCompiler, Parser* parser, Scanner* scanner, bool canAssign, Token name) {
   uint8_t getOp, setOp;
+
   int arg = resolveLocal(currentCompiler, parser, &name);
   if (arg != -1) {
     getOp = OP_GET_LOCAL;
@@ -598,8 +598,8 @@ static void function(VirtualMachine* vm, Compiler* currentCompiler, Parser* pars
   emitBytes(currentCompiler, parser, OP_CLOSURE, addConstant(currentChunk(currentCompiler), OBJECT_VAL(function)));
   
   for (int i = 0; i < function->upvalueCount; i++) {
-    emitByte(currentCompiler, parser, currentCompiler->upvalues[i].isLocal ? 1 : 0);
-    emitByte(currentCompiler, parser, currentCompiler->upvalues[i].index);
+    emitByte(currentCompiler, parser, compiler.upvalues[i].isLocal ? 1 : 0);
+    emitByte(currentCompiler, parser, compiler.upvalues[i].index);
   }
 }
 

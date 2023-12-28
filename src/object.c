@@ -51,8 +51,16 @@ uint32_t hashValue(Value value) {
 }
 
 ObjClosure* newClosure(VirtualMachine* vm, ObjFunction* function) {
+  ObjUpvalue** upvalues = ALLOCATE(ObjUpvalue*, function->upvalueCount);
+  
+  for (int i = 0; i < function->upvalueCount; i++) {
+    upvalues[i] = NULL;
+  }
+
   ObjClosure* closure = ALLOCATE_OBJECT(vm, ObjClosure, OBJ_CLOSURE);
   closure->function = function;
+  closure->upvalues = upvalues;
+  closure->upvalueCount = function->upvalueCount;
   return closure;
 }
 
@@ -103,6 +111,12 @@ ObjString* createConstantString(VirtualMachine* vm, const char* chars, int lengt
   return string;  
 }
 
+ObjUpvalue* newUpvalue(VirtualMachine* vm, Value* slot) {
+  ObjUpvalue* upvalue = ALLOCATE_OBJECT(vm, ObjUpvalue, OBJ_UPVALUE);
+  upvalue->location = slot;
+  return upvalue;
+}
+
 void printFunction(ObjFunction* function) {
   if (function->name == NULL) {
     printf("<script>");
@@ -125,6 +139,9 @@ void printObject(Value value) {
     case OBJ_STRING:
       printf("%.*s", AS_STRING(value)->length, AS_CSTRING(value));
       break;
+    case OBJ_UPVALUE:
+      printf("upvalue");
+      break; 
     default: return; // Unreachable
   }
 }

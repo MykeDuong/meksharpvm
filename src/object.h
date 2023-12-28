@@ -24,6 +24,7 @@ typedef enum {
   OBJ_FUNCTION,
   OBJ_NATIVE,
   OBJ_STRING,
+  OBJ_UPVALUE,
 } ObjectType;
 
 struct Object {
@@ -55,9 +56,16 @@ struct ObjString {
   char storage[];
 };
 
+typedef struct ObjUpvalue {
+  Object object;
+  Value* location;
+} ObjUpvalue;
+
 typedef struct {
   Object object;
   ObjFunction* function;
+  ObjUpvalue** upvalues;
+  int upvalueCount;
 } ObjClosure;
 
 
@@ -67,9 +75,9 @@ ObjNative* newNative(VirtualMachine* vm, NativeFn function);
 ObjString* createString(VirtualMachine* vm, const char* chars, int length);
 ObjString* createConstantString(VirtualMachine* vm, const char* chars, int length);
 ObjString* completeString(VirtualMachine* vm, ObjString* string);
-uint32_t hashValue(Value value);
-
+ObjUpvalue* newUpvalue(VirtualMachine* vm, Value* slot);
 void printObject(Value value);
+uint32_t hashValue(Value value);
 
 static inline bool isObjectType(Value value, ObjectType type) {
   return IS_OBJECT(value) && AS_OBJECT(value)->type == type;
