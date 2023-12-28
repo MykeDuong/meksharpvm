@@ -59,6 +59,7 @@ ObjClosure* newClosure(VirtualMachine* vm, ObjFunction* function) {
 ObjFunction* newFunction(VirtualMachine* vm) {
   ObjFunction* function = ALLOCATE_OBJECT(vm, ObjFunction, OBJ_FUNCTION);  
   function->arity = 0;
+  function->upvalueCount = 0;
   function->name = NULL;
   initChunk(&function->chunk);
   return function;

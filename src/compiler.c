@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -28,6 +29,11 @@ typedef struct {
   int depth;
 } Local;
 
+typedef struct {
+  uint8_t index;
+  bool isLocal;
+} Upvalue;
+
 typedef enum {
   TYPE_FUNCTION,
   TYPE_SCRIPT,
@@ -40,6 +46,7 @@ typedef struct Compiler {
 
   Local locals[UINT8_COUNT];
   int localCount;
+  Upvalue upvalues[UINT8_COUNT];
   int scopeDepth;
 } Compiler;
 
@@ -260,6 +267,43 @@ static int resolveLocal(Compiler* currentCompiler, Parser* parser, Token* name) 
   return -1;
 }
 
+static int addUpvalue(Compiler* currentCompiler, Parser* parser, uint8_t index, bool isLocal) {
+  int upvalueCount = currentCompiler->function->upvalueCount;
+  
+  for (int i = 0; i < upvalueCount; i++) {
+    Upvalue* upvalue = &currentCompiler->upvalues[i];
+    if (upvalue->index == index && upvalue->isLocal == isLocal) {
+      // already closed
+      return i;
+    }
+  }
+
+  if (upvalueCount == UINT8_COUNT) {
+    error(parser, "Too many closure variables in function.");
+    return 0;
+  }
+
+  currentCompiler->upvalues[upvalueCount].isLocal = isLocal;
+  currentCompiler->upvalues[upvalueCount].index = index;
+  return currentCompiler->function->upvalueCount++;
+}
+
+static int resolveUpvalue(Compiler* currentCompiler, Parser* parser, Token* name) {
+  if (currentCompiler->enclosing == NULL) return -1;
+  int local = resolveLocal(currentCompiler->enclosing, parser, name);
+
+  if (local != -1) {
+    return addUpvalue(currentCompiler, parser, (uint8_t)local, true);
+  }
+
+  int upvalue = resolveUpvalue(currentCompiler->enclosing, parser, name);
+  if (upvalue != -1) {
+    return addUpvalue(currentCompiler, parser, (uint8_t)upvalue, false);
+  }
+
+  return -1;
+}
+
 static void addLocal(Compiler* currentCompiler, Parser* parser, Token name) {
   if (currentCompiler->localCount == UINT8_COUNT) {
     error(parser, "Too many local variables in function/scope.");
@@ -421,7 +465,10 @@ static void namedVariable(VirtualMachine* vm, Compiler* currentCompiler, Parser*
   if (arg != -1) {
     getOp = OP_GET_LOCAL;
     setOp = OP_SET_LOCAL;
-  } else {
+  } else if ((arg = resolveUpvalue(currentCompiler, parser, &name)) != -1) {
+    getOp = OP_GET_UPVALUE;
+    setOp = OP_SET_UPVALUE;
+  }else {
     arg = identifierConstant(currentCompiler, vm, &name);
     getOp = OP_GET_GLOBAL;
     setOp = OP_SET_GLOBAL;
@@ -546,9 +593,14 @@ static void function(VirtualMachine* vm, Compiler* currentCompiler, Parser* pars
   block(vm, &compiler, parser, scanner);
 
   ObjFunction* function = endCompiler(&compiler, parser);
-
   /* End using new compiler */
+
   emitBytes(currentCompiler, parser, OP_CLOSURE, addConstant(currentChunk(currentCompiler), OBJECT_VAL(function)));
+  
+  for (int i = 0; i < function->upvalueCount; i++) {
+    emitByte(currentCompiler, parser, currentCompiler->upvalues[i].isLocal ? 1 : 0);
+    emitByte(currentCompiler, parser, currentCompiler->upvalues[i].index);
+  }
 }
 
 static void funDeclaration(VirtualMachine* vm, Compiler* currentCompiler, Parser* parser, Scanner* scanner) {
