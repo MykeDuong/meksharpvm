@@ -113,7 +113,9 @@ ObjString* createConstantString(VirtualMachine* vm, const char* chars, int lengt
 
 ObjUpvalue* newUpvalue(VirtualMachine* vm, Value* slot) {
   ObjUpvalue* upvalue = ALLOCATE_OBJECT(vm, ObjUpvalue, OBJ_UPVALUE);
+  upvalue->closed = NAH_VAL;
   upvalue->location = slot;
+  upvalue->next = NULL;
   return upvalue;
 }
 

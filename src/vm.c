@@ -21,6 +21,7 @@ static Value clockNative(int argCount, Value* args) {
 }
 
 static void resetStack(VirtualMachine* vm) {
+  vm->openUpvalues = NULL;
   vm->stackTop = vm->stack;
   vm->frameCount = 0;
 }
@@ -136,8 +137,35 @@ static bool callValue(VirtualMachine* vm, Value callee, int argCount) {
 }
 
 static ObjUpvalue* captureUpvalue(VirtualMachine* vm, Value* local) {
+  ObjUpvalue* prevUpvalue = NULL;
+  ObjUpvalue* upvalue = vm->openUpvalues;
+  while (upvalue != NULL && upvalue->location > local) {
+    prevUpvalue = upvalue;
+    upvalue = upvalue->next;
+  }
+
+  if (upvalue != NULL && upvalue->location == local) {
+    return upvalue;
+  }
+
   ObjUpvalue* createdUpvalue = newUpvalue(vm, local);
+  createdUpvalue->next = upvalue;
+  if (prevUpvalue == NULL) {
+    vm->openUpvalues = createdUpvalue;
+  } else {
+    prevUpvalue->next = createdUpvalue;
+  }
+
   return createdUpvalue;
+}
+
+static void closeUpvalues(VirtualMachine* vm, Value* last) {
+  while (vm->openUpvalues != NULL && vm->openUpvalues->location >= last) {
+    ObjUpvalue* upvalue = vm->openUpvalues;
+    upvalue->closed = *upvalue->location;
+    upvalue->location = &upvalue->closed;
+    vm->openUpvalues = upvalue->next;
+  } 
 }
 
 static bool isFalsey(Value value) {
@@ -327,15 +355,19 @@ static InterpretResult run(VirtualMachine* vm) {
           if (isLocal) {
             closure->upvalues[i] = captureUpvalue(vm, &vm->stack[frame->slots + index]);
           } else {
-            printf("%d\n", frame->closure->upvalueCount);
             closure->upvalues[i] = frame->closure->upvalues[index];
           }
         }
 
         break;
       }
+      case OP_CLOSE_UPVALUE:
+        closeUpvalues(vm, vm->stackTop - 1);
+        pop(vm);
+        break;
       case OP_RETURN: {
         Value result = pop(vm);
+        closeUpvalues(vm, &vm->stack[frame->slots]);
         vm->frameCount--;
         if (vm->frameCount == 0) {
           pop(vm);
