@@ -52,13 +52,13 @@ static void runtimeError(VirtualMachine* vm, const char* format, ...) {
 static void defineNative(VirtualMachine* vm, const char* name, NativeFn function) {
   push(vm, OBJECT_VAL(createString(vm, name, (int)strlen(name))));
   push(vm, OBJECT_VAL(newNative(vm, function)));
-  tableSet(&vm->globals, vm->stack[0], vm->stack[1]);
+  tableSet(vm, &vm->globals, vm->stack[0], vm->stack[1]);
   pop(vm);
   pop(vm);
 }
 
 void initVM(VirtualMachine* vm) {
-  vm->stack = ALLOCATE(Value, UINT8_COUNT);
+  vm->stack = ALLOCATE(vm, Value, UINT8_COUNT);
   vm->stackCapacity = UINT8_COUNT;
   resetStack(vm);
   vm->objects = NULL;
@@ -68,11 +68,11 @@ void initVM(VirtualMachine* vm) {
 }
 
 void freeVM(VirtualMachine* vm) {
-  freeTable(&vm->strings);
-  freeTable(&vm->globals);
-  freeTable(&vm->globals);
+  freeTable(vm, &vm->strings);
+  freeTable(vm, &vm->globals);
+  freeTable(vm, &vm->globals);
   freeObjects(vm);
-  FREE_ARRAY(Value, vm->stack, vm->stackCapacity);
+  FREE_ARRAY(vm, Value, vm->stack, vm->stackCapacity);
 }
 
 void push(VirtualMachine* vm, Value value) {
@@ -81,7 +81,7 @@ void push(VirtualMachine* vm, Value value) {
     int oldCap = vm->stackCapacity;
     int pos = (int)(vm->stackTop - vm->stack);
     vm->stackCapacity = GROW_CAPACITY(oldCap);
-    vm->stack = GROW_ARRAY(Value, vm->stack, oldCap, vm->stackCapacity);
+    vm->stack = GROW_ARRAY(vm, Value, vm->stack, oldCap, vm->stackCapacity);
     vm->stackTop = vm->stack + pos;
   }
 
@@ -249,7 +249,7 @@ static InterpretResult run(VirtualMachine* vm) {
         Value name = READ_CONSTANT();
         ObjString* nameString = AS_STRING(name);
         Value value;
-        if (!tableGet(&vm->globals, name, &value)) {
+        if (!tableGet(vm, &vm->globals, name, &value)) {
           runtimeError(vm, "Undefined variable '%.*s'.", nameString->length, nameString->chars);
           return INTERPRET_RUNTIME_ERROR;
         }
@@ -258,13 +258,13 @@ static InterpretResult run(VirtualMachine* vm) {
       }
       case OP_DEFINE_GLOBAL: {
         Value name = READ_CONSTANT(); 
-        tableSet(&vm->globals, name, peek(vm, 0));
+        tableSet(vm, &vm->globals, name, peek(vm, 0));
         pop(vm);
         break;
       }
       case OP_SET_GLOBAL: {
         Value name = READ_CONSTANT();
-        if (tableSet(&vm->globals, name, peek(vm, 0))) {
+        if (tableSet(vm, &vm->globals, name, peek(vm, 0))) {
           tableDelete(&vm->globals, name);
           ObjString* nameString = AS_STRING(name);
           runtimeError(vm, "Undefined variable '%.*s'", nameString->length, nameString->chars);

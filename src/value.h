@@ -2,6 +2,7 @@
 #define MEKVM_VALUE_H
 
 #include "common.h"
+#include "memory.h"
 
 typedef struct Object Object;
 typedef struct ObjString ObjString;
@@ -46,8 +47,8 @@ typedef struct {
 
 bool valuesEqual(Value a, Value b);
 void initValueArray(ValueArray* array);
-void writeValueArray(ValueArray* array, Value value);
-void freeValueArray(ValueArray* array);
+void writeValueArray(VirtualMachine* vm, ValueArray* array, Value value);
+void freeValueArray(VirtualMachine* vm, ValueArray* array);
 void printValue(Value value);
 
 #endif 

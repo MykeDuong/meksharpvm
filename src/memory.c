@@ -6,7 +6,18 @@
 #include "vm.h"
 #include "object.h"
 
-void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
+#ifdef DEBUG_LOG_GC
+#include <stdio.h>
+#include "debug.h"
+#endif
+
+void* reallocate(VirtualMachine* vm, void* pointer, size_t oldSize, size_t newSize) {
+  if (newSize > oldSize) {
+#ifdef DEBUG_STRESS_GC
+    collectGarbage(vm);
+#endif
+  }
+
   if (newSize == 0) {
     // free memory
     free(pointer);
@@ -18,41 +29,60 @@ void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
   return result;
 }
 
-static void freeObject(Object* obj) {
+static void freeObject(VirtualMachine* vm, Object* obj) {
+#ifdef DEBUG_LOG_GC 
+  printf("%p free type %d\n", (void*)obj, obj->type);
+#endif
   switch (obj->type) {
     case OBJ_CLOSURE: {
       ObjClosure* closure = (ObjClosure*) obj;
-      FREE_ARRAY(ObjUpvalue*, closure->upvalues, closure->upvalueCount);
-      FREE(OBJ_CLOSURE, obj);
+      FREE_ARRAY(vm, ObjUpvalue*, closure->upvalues, closure->upvalueCount);
+      FREE(vm, OBJ_CLOSURE, obj);
       break;
     }
     case OBJ_FUNCTION: {
       ObjFunction* function = (ObjFunction*)obj;
-      freeChunk(&function->chunk);
-      FREE(ObjFunction, obj);
+      freeChunk(vm, &function->chunk);
+      FREE(vm, ObjFunction, obj);
       break;
     }
     case OBJ_NATIVE: {
-      FREE(ObjNative, obj);
+      FREE(vm, ObjNative, obj);
       break;
     }
     case OBJ_STRING: {
       ObjString* string = (ObjString*)obj;
-      FREE(ObjString, obj);
+      FREE(vm, ObjString, obj);
       break;
     }
     case OBJ_UPVALUE: {
-      FREE(ObjUpvalue, obj);
+      FREE(vm, ObjUpvalue, obj);
       break;
     }
   } 
+}
+
+static void markRoots() {
+
+}
+
+void collectGarbage(VirtualMachine* vm) {
+#ifdef DEBUG_LOG_GC
+  printf("---- Garbage Collector begins\n");
+#endif
+
+  markRoots();
+
+#ifdef DEBUG_LOG_GC
+  printf("---- Garbage Collector ends\n");
+#endif
 }
 
 void freeObjects(VirtualMachine* vm) {
   Object* obj = vm->objects;
   while (obj != NULL) {
     Object* next = obj->next;
-    freeObject(obj);
+    freeObject(vm, obj);
     obj = next;
   }
 }

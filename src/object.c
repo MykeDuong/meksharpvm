@@ -16,11 +16,16 @@
   (type*)allocateObject((vm), sizeof(type), objectType)
 
 static Object* allocateObject(VirtualMachine* vm, size_t size, ObjectType type) {
-  Object* obj = (Object*)reallocate(NULL, 0, size);
+  Object* obj = (Object*)reallocate(vm, NULL, 0, size);
   obj->type = type;
 
   obj->next = vm->objects;
   vm->objects = obj;
+
+#ifdef DEBUG_LOG_GC
+  printf("%p allocate %zu for %d\n", (void*)obj, size, type);
+#endif
+
   return obj;
 }
 
@@ -51,7 +56,7 @@ uint32_t hashValue(Value value) {
 }
 
 ObjClosure* newClosure(VirtualMachine* vm, ObjFunction* function) {
-  ObjUpvalue** upvalues = ALLOCATE(ObjUpvalue*, function->upvalueCount);
+  ObjUpvalue** upvalues = ALLOCATE(vm, ObjUpvalue*, function->upvalueCount);
   
   for (int i = 0; i < function->upvalueCount; i++) {
     upvalues[i] = NULL;
@@ -92,7 +97,7 @@ ObjString* createString(VirtualMachine* vm, const char* chars, int length) {
   string->storage[length] = '\0';
   string->chars = string->storage;
   string->hash = hash;
-  tableSet(&vm->strings, OBJECT_VAL(string), NAH_VAL);
+  tableSet(vm, &vm->strings, OBJECT_VAL(string), NAH_VAL);
   return string;
 }
 
@@ -107,7 +112,7 @@ ObjString* createConstantString(VirtualMachine* vm, const char* chars, int lengt
   string->isConstant = true;
   string->chars = chars;
   string->hash = hash;
-  tableSet(&vm->strings, OBJECT_VAL(string), NAH_VAL);
+  tableSet(vm, &vm->strings, OBJECT_VAL(string), NAH_VAL);
   return string;  
 }
 

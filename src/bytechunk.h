@@ -53,10 +53,12 @@ typedef struct {
   ValueArray constants;
 } ByteChunk;
 
+typedef struct VirtualMachine_Struct VirtualMachine;
+
 void initChunk(ByteChunk* chunk);
-void writeChunk(ByteChunk* chunk, uint8_t byte, int line);
-int addConstant(ByteChunk* chunk, Value value);
-void writeConstant(ByteChunk* chunk, Value value, int line);
-void freeChunk(ByteChunk* chunk);
+void writeChunk(VirtualMachine* vm, ByteChunk* chunk, uint8_t byte, int line);
+int addConstant(VirtualMachine* vm, ByteChunk* chunk, Value value);
+void writeConstant(VirtualMachine* vm, ByteChunk* chunk, Value value, int line);
+void freeChunk(VirtualMachine* vm, ByteChunk* chunk);
 
 #endif 

@@ -2,6 +2,8 @@
 #include <stdlib.h>
 
 #include "bytechunk.h"
+#include "memory.h"
+#include "vm.h"
 #include "value.h"
 
 void initChunk(ByteChunk *chunk) {
@@ -14,19 +16,19 @@ void initChunk(ByteChunk *chunk) {
   initValueArray(&chunk->constants);
 }
 
-void writeChunk(ByteChunk* chunk, uint8_t byte, int line) {
+void writeChunk(VirtualMachine* vm, ByteChunk* chunk, uint8_t byte, int line) {
   if (chunk->capacity < chunk->count + 1) {
     // Grow
     int oldCap = chunk->capacity;
     chunk->capacity = GROW_CAPACITY(oldCap);
-    chunk->code = GROW_ARRAY(uint8_t, chunk->code, oldCap, chunk->capacity);
+    chunk->code = GROW_ARRAY(vm, uint8_t, chunk->code, oldCap, chunk->capacity);
   }
 
   // Separate lines with other capacities
   if (chunk->lineCapacity < chunk->lineSize + 2) {
     int oldCap = chunk->lineCapacity;
     chunk->lineCapacity = GROW_CAPACITY(oldCap);
-    chunk->lines = GROW_ARRAY(int, chunk->lines, oldCap, chunk->lineCapacity);
+    chunk->lines = GROW_ARRAY(vm, int, chunk->lines, oldCap, chunk->lineCapacity);
   }
 
   chunk->code[chunk->count] = byte;
@@ -43,28 +45,28 @@ void writeChunk(ByteChunk* chunk, uint8_t byte, int line) {
   }
 }
 
-int addConstant(ByteChunk* chunk, Value value) {
-  writeValueArray(&chunk->constants, value);
+int addConstant(VirtualMachine* vm, ByteChunk* chunk, Value value) {
+  writeValueArray(vm, &chunk->constants, value);
   return chunk->constants.count - 1;
 }
 
-void writeConstant(ByteChunk* chunk, Value value, int line) {
-  int idx = addConstant(chunk, value);
+void writeConstant(VirtualMachine* vm, ByteChunk* chunk, Value value, int line) {
+  int idx = addConstant(vm, chunk, value);
   if (idx < 255) {
-    writeChunk(chunk, OP_CONSTANT, line);
-    writeChunk(chunk, (uint8_t)idx, line);
+    writeChunk(vm, chunk, OP_CONSTANT, line);
+    writeChunk(vm, chunk, (uint8_t)idx, line);
   } else {
-    writeChunk(chunk, OP_CONSTANT_LONG, line);
-    writeChunk(chunk, (uint8_t)(idx & 0xff), line);
-    writeChunk(chunk, (uint8_t)((idx >> 8) & 0xff), line);
-    writeChunk(chunk, (uint8_t)((idx >> 16) & 0xff), line);
+    writeChunk(vm, chunk, OP_CONSTANT_LONG, line);
+    writeChunk(vm, chunk, (uint8_t)(idx & 0xff), line);
+    writeChunk(vm, chunk, (uint8_t)((idx >> 8) & 0xff), line);
+    writeChunk(vm, chunk, (uint8_t)((idx >> 16) & 0xff), line);
   }
 }
 
-void freeChunk(ByteChunk* chunk) {
-  FREE_ARRAY(uint8_t, chunk->code, chunk->capacity);
-  FREE_ARRAY(int, chunk->lines, chunk->capacity);
-  freeValueArray(&chunk->constants);
+void freeChunk(VirtualMachine* vm, ByteChunk* chunk) {
+  FREE_ARRAY(vm, uint8_t, chunk->code, chunk->capacity);
+  FREE_ARRAY(vm, int, chunk->lines, chunk->capacity);
+  freeValueArray(vm, &chunk->constants);
   initChunk(chunk);
 }
 
