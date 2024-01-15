@@ -25,7 +25,6 @@ struct VirtualMachine_Struct{
   Value* stackTop;
   Table globals;
   Table strings;
-  ObjUpvalue* openUpvalues;
   Object* objects;
 } ;
 
