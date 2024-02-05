@@ -4,28 +4,30 @@
 #include "memory.h"
 #include "value.h"
 #include "object.h"
+#include "vm.h"
+#include "compiler.h"
 
-void initValueArray(ValueArray* array) {
+void initValueArray(ValueArray* array, VirtualMachine* vm, Compiler* compiler) {
   array->values = NULL;
   array->capacity = 0;
   array->count = 0;
 }
 
-void writeValueArray(ValueArray* array, Value value) {
+void writeValueArray(ValueArray* array, Value value, VirtualMachine* vm, Compiler* compiler) {
   if (array->capacity < array->count + 1) {
     // Grow
     int oldCap = array->capacity;
     array->capacity = GROW_CAPACITY(oldCap);
-    array->values = GROW_ARRAY(Value, array->values, oldCap, array->capacity);
+    array->values = GROW_ARRAY(Value, array->values, oldCap, array->capacity, vm, compiler);
   }
 
   array->values[array->count] = value;
   array->count++;
 }
 
-void freeValueArray(ValueArray* array) {
-  FREE_ARRAY(Value, array->values, array->capacity);
-  initValueArray(array);
+void freeValueArray(ValueArray* array, VirtualMachine* vm, Compiler* compiler) {
+  FREE_ARRAY(Value, array->values, array->capacity, vm, compiler);
+  initValueArray(array, vm, compiler);
 }
 
 void printValue(Value value) {
