@@ -24,31 +24,6 @@ typedef struct {
   bool panicMode;
 } Parser;
 
-typedef struct {
-  Token name;
-  int depth;
-} Local;
-
-typedef struct {
-  uint8_t index;
-  bool isLocal;
-} Upvalue;
-
-typedef enum {
-  TYPE_FUNCTION,
-  TYPE_SCRIPT,
-} FunctionType;
-
-typedef struct Compiler {
-  struct Compiler* enclosing;
-  ObjFunction* function;
-  FunctionType type;
-
-  Local locals[UINT8_COUNT];
-  int localCount;
-  Upvalue upvalues[UINT8_COUNT];
-  int scopeDepth;
-} Compiler;
 
 typedef enum {
   PREC_NONE,

@@ -4,6 +4,7 @@
 #include "common.h"
 
 typedef struct VirtualMachine_Struct VirtualMachine;
+typedef struct Compiler_Struct Compiler;
 
 #define ALLOCATE(type, count) \
   (type*)reallocate(NULL, 0, sizeof(type) * (count))
@@ -20,6 +21,7 @@ typedef struct VirtualMachine_Struct VirtualMachine;
   reallocate(pointer, sizeof(type) * (oldCount), 0)
 
 void* reallocate(void* pointer, size_t oldSize, size_t newSize);
+void collectGarbage(VirtualMachine* vm, Compiler* compiler);
 void freeObjects(VirtualMachine* vm);
 
 #endif 
