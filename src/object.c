@@ -20,6 +20,11 @@ static Object* allocateObject(VirtualMachine* vm, Compiler* compiler, size_t siz
 
   obj->next = vm->objects;
   vm->objects = obj;
+
+#ifdef DEBUG_LOG_GC
+  printf("%p allocate %zu for %d\n", (void*)obj, size, type);
+#endif 
+
   return obj;
 }
 

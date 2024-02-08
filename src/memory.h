@@ -5,6 +5,8 @@
 
 typedef struct VirtualMachine_Struct VirtualMachine;
 typedef struct Compiler_Struct Compiler;
+typedef struct Value_Struct Value;
+typedef struct Object Object;
 
 #define ALLOCATE(type, count, vm, compiler) \
   (type*)reallocate(NULL, 0, sizeof(type) * (count), vm, compiler)
@@ -21,6 +23,8 @@ typedef struct Compiler_Struct Compiler;
   reallocate(pointer, sizeof(type) * (oldCount), 0, vm, compiler)
 
 void* reallocate(void* pointer, size_t oldSize, size_t newSize, VirtualMachine* vm, Compiler* compiler);
+void markObject(Object* obj);
+void markValue(Value value);
 void collectGarbage(VirtualMachine* vm, Compiler* compiler);
 void freeObjects(VirtualMachine* vm, Compiler* compiler);
 

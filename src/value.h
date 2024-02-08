@@ -15,14 +15,16 @@ typedef enum {
   VAL_EMPTY,
 } ValueType;
 
-typedef struct {
+struct Value_Struct {
   ValueType type;
   union {
     bool boolean;
     double number;
     Object* object;
   } as;
-} Value;
+};
+
+typedef struct Value_Struct Value;
 
 #define IS_BOOL(value)    ((value).type == VAL_BOOL)
 #define IS_NAH(value)     ((value).type == VAL_NAH)

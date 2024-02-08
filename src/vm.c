@@ -1,5 +1,3 @@
-#include <_types/_uint8_t.h>
-#include <stdint.h>
 #include <time.h>
 #include <stdio.h>
 #include <string.h>

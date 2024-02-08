@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "bytechunk.h"
 #include "memory.h"
@@ -6,6 +7,7 @@
 #include "vm.h"
 #include "object.h"
 #include "compiler.h"
+#include "value.h"
 
 void* reallocate(void* pointer, size_t oldSize, size_t newSize, VirtualMachine* vm, Compiler* compiler) {
   if (newSize > oldSize) {
@@ -24,7 +26,20 @@ void* reallocate(void* pointer, size_t oldSize, size_t newSize, VirtualMachine* 
   return result;
 }
 
+void markObject(Object* obj) {
+  if (obj == NULL) return;
+  obj->isMarked = true;
+}
+
+void markValue(Value value) {
+  if (IS_OBJECT(value)) markObject(AS_OBJECT(value));
+}
+
+
 static void freeObject(Object* obj, VirtualMachine* vm, Compiler* compiler) {
+#ifdef DEBUG_LOG_GC
+  printf("%p free type %d\n", (void*)obj, obj->type);
+#endif 
   switch (obj->type) {
     case OBJ_CLOSURE: {
       ObjClosure* closure = (ObjClosure*) obj;
@@ -63,3 +78,20 @@ void freeObjects(VirtualMachine* vm, Compiler* compiler) {
   }
 }
 
+static void markRoots(VirtualMachine* vm, Compiler* compiler) {
+  for (Value* slot = vm->stack; slot < vm->stackTop; slot++) {
+    markValue(*slot);
+  }
+}
+
+void collectGarbage(VirtualMachine *vm, Compiler *compiler) {
+#ifdef DEBUG_LOG_GC
+  printf("---- Garbage Collection begins ----\n");
+#endif
+  
+  markRoots(vm, compiler);
+
+#ifdef DEBUG_LOG_GC
+  printf("---- Garbage Collection ends ----\n");
+#endif 
+}
