@@ -1,8 +1,11 @@
-fun outer() {
-  var x = "outside";
-  fun inner() {
-    print x;
+var f;
+
+{
+  var local = "local";
+  fun f_() {
+    print local;
   }
-  inner();
+  f = f_;
 }
-outer();
+
+f(); // expect: local

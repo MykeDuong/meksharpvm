@@ -197,6 +197,11 @@ static void endScope(Compiler* currentCompiler, Parser* parser) {
   while (currentCompiler->localCount > 0 && 
       currentCompiler->locals[currentCompiler->localCount - 1].depth > currentCompiler->scopeDepth
   ) {
+    if (currentCompiler->locals[currentCompiler->localCount - 1].isCaptured) {
+      emitByte(currentCompiler, parser, OP_CLOSE_UPVALUE); 
+    } else {
+      emitByte(currentCompiler, parser, OP_POP);
+    }
     emitByte(currentCompiler, parser, OP_POP);
     currentCompiler->localCount--;
   }
@@ -266,6 +271,7 @@ static int resolveUpvalue(Compiler* currentCompiler, Parser* parser, Token* name
   if (currentCompiler->enclosing == NULL) return -1;
   int local = resolveLocal(currentCompiler->enclosing, parser, name);
   if (local != -1) {
+    currentCompiler->enclosing->locals[local].isCaptured = true;
     return addUpvalue(currentCompiler, parser, (uint8_t)local, true);
   }
 
@@ -285,6 +291,7 @@ static void addLocal(Compiler* currentCompiler, Parser* parser, Token name) {
   Local* local = &currentCompiler->locals[currentCompiler->localCount++];
   local->name = name;
   local->depth = -1; 
+  local->isCaptured = false;
 }
 
 static void declareVariable(Compiler* currentCompiler, Parser* parser) {

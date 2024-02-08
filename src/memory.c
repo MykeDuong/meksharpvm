@@ -104,7 +104,7 @@ void collectGarbage(VirtualMachine *vm, Compiler *compiler) {
   printf("---- Garbage Collection begins ----\n");
 #endif
   
-  markRoots(vm, compiler);
+  //markRoots(vm, compiler);
 
 #ifdef DEBUG_LOG_GC
   printf("---- Garbage Collection ends ----\n");
