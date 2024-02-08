@@ -28,6 +28,13 @@ void* reallocate(void* pointer, size_t oldSize, size_t newSize, VirtualMachine* 
 
 void markObject(Object* obj) {
   if (obj == NULL) return;
+
+#ifdef DEBUG_LOG_GC
+  printf("%p mark ", (void*)obj);
+  printValue(OBJECT_VAL(obj));
+  printf("\n");
+#endif 
+
   obj->isMarked = true;
 }
 
@@ -79,8 +86,16 @@ void freeObjects(VirtualMachine* vm, Compiler* compiler) {
 }
 
 static void markRoots(VirtualMachine* vm, Compiler* compiler) {
-  for (Value* slot = vm->stack; slot < vm->stackTop; slot++) {
-    markValue(*slot);
+  if (vm != NULL) {
+    for (Value* slot = vm->stack; slot < vm->stackTop; slot++) {
+      markValue(*slot);
+    }
+
+    for (int i = 0; i < vm->frameCount; i++) {
+      markObject((Object*)vm->frames[i].closure);
+    }
+
+    markTable(&vm->globals);
   }
 }
 

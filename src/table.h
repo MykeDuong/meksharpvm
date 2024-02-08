@@ -24,5 +24,6 @@ bool tableDelete(Table* table, Value key, VirtualMachine* vm, Compiler* compiler
 void tableAddAll(Table* from, Table* to, VirtualMachine* vm, Compiler* compiler);
 void printTable(Table* table);
 ObjString* tableFindString(Table* table, const char* chars, int length, uint32_t hash);
+void markTable(Table* table);
 
 #endif /* MEKVM_TABLE_H */ 
