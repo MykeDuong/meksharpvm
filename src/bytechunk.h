@@ -52,10 +52,10 @@ typedef struct {
   ValueArray constants;
 } ByteChunk;
 
-void initChunk(ByteChunk* chunk);
-void writeChunk(ByteChunk* chunk, uint8_t byte, int line);
-int addConstant(ByteChunk* chunk, Value value);
-void writeConstant(ByteChunk* chunk, Value value, int line);
-void freeChunk(ByteChunk* chunk);
+void initChunk(ByteChunk* chunk, VirtualMachine* vm, Compiler* compiler);
+void writeChunk(ByteChunk* chunk, uint8_t byte, int line, VirtualMachine* vm, Compiler* compiler);
+int addConstant(ByteChunk* chunk, Value value, VirtualMachine* vm, Compiler* compiler);
+void writeConstant(ByteChunk* chunk, Value value, int line, VirtualMachine* vm, Compiler* compiler);
+void freeChunk(ByteChunk* chunk, VirtualMachine* vm, Compiler* compiler);
 
 #endif 

@@ -3,7 +3,6 @@
 #include <sys/types.h>
 
 #include "bytechunk.h"
-#include "debug.h"
 #include "memory.h"
 #include "object.h"
 #include "value.h"
@@ -12,11 +11,11 @@
 #define HASH_SEED 2166136261u
 #define HASH_PRIME 16777619
 
-#define ALLOCATE_OBJECT(vm, type, objectType) \
-  (type*)allocateObject((vm), sizeof(type), objectType)
+#define ALLOCATE_OBJECT(vm, compiler, type, objectType) \
+  (type*)allocateObject((vm), (compiler), sizeof(type), objectType)
 
-static Object* allocateObject(VirtualMachine* vm, size_t size, ObjectType type) {
-  Object* obj = (Object*)reallocate(NULL, 0, size);
+static Object* allocateObject(VirtualMachine* vm, Compiler* compiler, size_t size, ObjectType type) {
+  Object* obj = (Object*)reallocate(NULL, 0, size, vm, compiler);
   obj->type = type;
 
   obj->next = vm->objects;
@@ -50,69 +49,69 @@ uint32_t hashValue(Value value) {
   }
 }
 
-ObjClosure* newClosure(VirtualMachine* vm, ObjFunction* function) {
-  ObjUpvalue** upvalues = ALLOCATE(ObjUpvalue*, function->upvalueCount);
+ObjClosure* newClosure(VirtualMachine* vm, Compiler* compiler, ObjFunction* function) {
+  ObjUpvalue** upvalues = ALLOCATE(ObjUpvalue*, function->upvalueCount, vm, compiler);
   
   for (int i = 0; i < function->upvalueCount; i++) {
     upvalues[i] = NULL;
   }
 
-  ObjClosure* closure = ALLOCATE_OBJECT(vm, ObjClosure, OBJ_CLOSURE);
+  ObjClosure* closure = ALLOCATE_OBJECT(vm, compiler, ObjClosure, OBJ_CLOSURE);
   closure->function = function;
   closure->upvalues = upvalues;
   closure->upvalueCount = function->upvalueCount;
   return closure;
 }
 
-ObjFunction* newFunction(VirtualMachine* vm) {
-  ObjFunction* function = ALLOCATE_OBJECT(vm, ObjFunction, OBJ_FUNCTION);  
+ObjFunction* newFunction(VirtualMachine* vm, Compiler* compiler) {
+  ObjFunction* function = ALLOCATE_OBJECT(vm, compiler, ObjFunction, OBJ_FUNCTION);  
   function->arity = 0;
   function->upvalueCount = 0;
   function->name = NULL;
-  initChunk(&function->chunk);
+  initChunk(&function->chunk, vm, compiler);
   return function;
 }
 
-ObjNative* newNative(VirtualMachine* vm, NativeFn function) {
-  ObjNative* native = ALLOCATE_OBJECT(vm, ObjNative, OBJ_NATIVE); 
+ObjNative* newNative(VirtualMachine* vm, Compiler* compiler, NativeFn function) {
+  ObjNative* native = ALLOCATE_OBJECT(vm, compiler, ObjNative, OBJ_NATIVE); 
   native->function = function;
   return native;
 }
 
-ObjString* createString(VirtualMachine* vm, const char* chars, int length) {
+ObjString* createString(VirtualMachine* vm, Compiler* compiler, const char* chars, int length) {
   uint32_t hash = hashString(chars, length);
 
   ObjString* interned = tableFindString(&vm->strings, chars, length, hash);
   if (interned != NULL) return interned;
     
-  ObjString* string = (ObjString*)allocateObject(vm, sizeof(ObjString) + sizeof(char[length + 1]), OBJ_STRING);
+  ObjString* string = (ObjString*)allocateObject(vm, compiler, sizeof(ObjString) + sizeof(char[length + 1]), OBJ_STRING);
   string->length = length;
   string->isConstant = false;
   memcpy(string->storage, chars, length);
   string->storage[length] = '\0';
   string->chars = string->storage;
   string->hash = hash;
-  tableSet(&vm->strings, OBJECT_VAL(string), NAH_VAL);
+  tableSet(&vm->strings, OBJECT_VAL(string), NAH_VAL, vm, compiler);
   return string;
 }
 
-ObjString* createConstantString(VirtualMachine* vm, const char* chars, int length) {
+ObjString* createConstantString(VirtualMachine* vm, Compiler* compiler, const char* chars, int length) {
   uint32_t hash = hashString(chars, length);
 
   ObjString* interned = tableFindString(&vm->strings, chars, length, hash);
   if (interned != NULL) return interned;
 
-  ObjString* string = (ObjString*)allocateObject(vm, sizeof(ObjString), OBJ_STRING);
+  ObjString* string = (ObjString*)allocateObject(vm, compiler, sizeof(ObjString), OBJ_STRING);
   string->length = length;
   string->isConstant = true;
   string->chars = chars;
   string->hash = hash;
-  tableSet(&vm->strings, OBJECT_VAL(string), NAH_VAL);
+  tableSet(&vm->strings, OBJECT_VAL(string), NAH_VAL, vm, compiler);
   return string;  
 }
 
-ObjUpvalue* newUpvalue(VirtualMachine* vm, Value* slot) {
-  ObjUpvalue* upvalue = ALLOCATE_OBJECT(vm, ObjUpvalue, OBJ_UPVALUE);
+ObjUpvalue* newUpvalue(VirtualMachine* vm, Compiler* compiler, Value* slot) {
+  ObjUpvalue* upvalue = ALLOCATE_OBJECT(vm, compiler, ObjUpvalue, OBJ_UPVALUE);
   upvalue->location = slot;
   return upvalue;
 }

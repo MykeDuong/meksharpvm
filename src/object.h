@@ -69,13 +69,13 @@ typedef struct {
 } ObjClosure;
 
 
-ObjClosure* newClosure(VirtualMachine* vm, ObjFunction* function);
-ObjFunction* newFunction(VirtualMachine* vm);
-ObjNative* newNative(VirtualMachine* vm, NativeFn function);
-ObjString* createString(VirtualMachine* vm, const char* chars, int length);
-ObjString* createConstantString(VirtualMachine* vm, const char* chars, int length);
-ObjString* completeString(VirtualMachine* vm, ObjString* string);
-ObjUpvalue* newUpvalue(VirtualMachine* vm, Value* slot);
+ObjClosure* newClosure(VirtualMachine* vm, Compiler* compiler, ObjFunction* function);
+ObjFunction* newFunction(VirtualMachine* vm, Compiler* compiler);
+ObjNative* newNative(VirtualMachine* vm, Compiler* compiler, NativeFn function);
+ObjString* createString(VirtualMachine* vm, Compiler* compiler, const char* chars, int length);
+ObjString* createConstantString(VirtualMachine* vm, Compiler* compiler, const char* chars, int length);
+ObjString* completeString(VirtualMachine* vm, Compiler* compiler, ObjString* string);
+ObjUpvalue* newUpvalue(VirtualMachine* vm, Compiler* compiler, Value* slot);
 void printObject(Value value);
 uint32_t hashValue(Value value);
 

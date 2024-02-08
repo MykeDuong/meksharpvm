@@ -9,7 +9,6 @@
 #include "memory.h"
 #include "object.h"
 #include "scanner.h"
-#include "table.h"
 #include "value.h"
 #include "vm.h"
 
@@ -114,7 +113,7 @@ static bool match(Parser* parser, Scanner* scanner, TokenType type) {
 }
 
 static void emitByte(Compiler* currentCompiler, Parser* parser, uint8_t byte) {
-  writeChunk(currentChunk(currentCompiler), byte, parser->previous.line);
+  writeChunk(currentChunk(currentCompiler), byte, parser->previous.line, NULL, currentCompiler);
 }
 
 static void emitBytes(Compiler* currentCompiler, Parser* parser, uint8_t byte1, uint8_t byte2) {
@@ -145,7 +144,7 @@ static void emitReturn(Compiler* currentCompiler, Parser* parser) {
 }
 
 static void emitConstant(Compiler* currentCompiler, Parser* parser, Value value) {
-  writeConstant(currentChunk(currentCompiler), value, parser->previous.line);
+  writeConstant(currentChunk(currentCompiler), value, parser->previous.line, NULL, currentCompiler);
 }
 
 static void patchJump(Compiler* currentCompiler, Parser* parser, int offset) {
@@ -165,10 +164,10 @@ static void initCompiler(VirtualMachine* vm, Parser* parser, Compiler* compiler,
   compiler->type = type;
   compiler->localCount = 0;
   compiler->scopeDepth = 0;
-  compiler->function = newFunction(vm);
+  compiler->function = newFunction(vm, compiler);
 
   if (type != TYPE_SCRIPT) {
-    compiler->function->name = createString(vm, parser->previous.start, parser->previous.length);
+    compiler->function->name = createString(vm, compiler, parser->previous.start, parser->previous.length);
   }
 
   Local* local = &compiler->locals[compiler->localCount++];
@@ -212,7 +211,7 @@ static void parsePrecedence(VirtualMachine* vm, Compiler* currentCompiler, Parse
 
 static int identifierConstant(Compiler* currentCompiler, VirtualMachine* vm, Token* name) {
   // Can potentiall use createConstantString
-  ObjString* nameString = createString(vm, name->start, name->length); 
+  ObjString* nameString = createString(vm, currentCompiler, name->start, name->length); 
   Value value;
   // finding 
   for (int i = 0; i < currentChunk(currentCompiler)->constants.count; i++) {
@@ -220,7 +219,7 @@ static int identifierConstant(Compiler* currentCompiler, VirtualMachine* vm, Tok
       return i;
     }
   }
-  addConstant(currentChunk(currentCompiler), OBJECT_VAL(nameString));
+  addConstant(currentChunk(currentCompiler), OBJECT_VAL(nameString), vm, currentCompiler);
   return currentChunk(currentCompiler)->constants.count - 1;
 }
 
@@ -429,7 +428,7 @@ static void string(VirtualMachine* vm, Compiler* currentCompiler, Parser* parser
   emitConstant(
       currentCompiler, parser, 
       // OBJECT_VAL(createConstantString(vm, parser->previous.start + 1, parser->previous.length - 2))
-      OBJECT_VAL(createString(vm, parser->previous.start + 1, parser->previous.length - 2))
+      OBJECT_VAL(createString(vm, currentCompiler, parser->previous.start + 1, parser->previous.length - 2))
   ); 
 }
 
@@ -570,7 +569,10 @@ static void function(VirtualMachine* vm, Compiler* currentCompiler, Parser* pars
   ObjFunction* function = endCompiler(&compiler, parser);
   /* End using new compiler */
 
-  emitBytes(currentCompiler, parser, OP_CLOSURE, addConstant(currentChunk(currentCompiler), OBJECT_VAL(function)));
+  emitBytes(
+    currentCompiler, parser, OP_CLOSURE, 
+    addConstant(currentChunk(currentCompiler), OBJECT_VAL(function), vm, currentCompiler)
+  );
   
   for (int i = 0; i < function->upvalueCount; i++) {
     emitByte(currentCompiler, parser, compiler.upvalues[i].isLocal ? 1 : 0);

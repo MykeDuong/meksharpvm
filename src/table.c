@@ -9,15 +9,15 @@
 
 #define TABLE_MAX_LOAD 0.5
 
-void initTable(Table* table) {
+void initTable(Table* table, VirtualMachine* vm, Compiler* compiler) {
   table->count = 0;
   table->capacity = 0;
   table->entries = NULL;
 }
 
-void freeTable(Table* table) {
-  FREE_ARRAY(Entry, table->entries, table->capacity);
-  initTable(table);
+void freeTable(Table* table, VirtualMachine* vm, Compiler* compiler) {
+  FREE_ARRAY(Entry, table->entries, table->capacity, vm, compiler);
+  initTable(table, vm, compiler);
 }
 
 static Entry* findEntry(Entry* entries, int capacity, Value key) {
@@ -43,8 +43,8 @@ static Entry* findEntry(Entry* entries, int capacity, Value key) {
   }
 }
 
-static void adjustCapacity(Table* table, int capacity) {
-  Entry* entries = ALLOCATE(Entry, capacity);
+static void adjustCapacity(Table* table, int capacity, VirtualMachine* vm, Compiler* compiler) {
+  Entry* entries = ALLOCATE(Entry, capacity, vm, compiler);
   for (int i = 0; i < capacity; i++) {
     entries[i].key = EMPTY_VAL;
     entries[i].value = NAH_VAL;
@@ -61,7 +61,7 @@ static void adjustCapacity(Table* table, int capacity) {
     table->count++;
   }
 
-  FREE_ARRAY(Entry, table->entries, table->capacity);
+  FREE_ARRAY(Entry, table->entries, table->capacity, vm, compiler);
   table->entries = entries;
   table->capacity = capacity;
 }
@@ -76,10 +76,10 @@ bool tableGet(Table* table, Value key, Value* value) {
   return true;
 }
 
-bool tableSet(Table* table, Value key, Value value) {
+bool tableSet(Table* table, Value key, Value value, VirtualMachine* vm, Compiler* compiler) {
   if (table->count + 1 > table->capacity * TABLE_MAX_LOAD) {
     int capacity = GROW_CAPACITY(table->capacity);
-    adjustCapacity(table, capacity);
+    adjustCapacity(table, capacity, vm, compiler);
   }
 
   Entry* entry = findEntry(table->entries, table->capacity, key);
@@ -91,7 +91,7 @@ bool tableSet(Table* table, Value key, Value value) {
   return isNewKey;
 }
 
-bool tableDelete(Table* table, Value key) {
+bool tableDelete(Table* table, Value key, VirtualMachine* vm, Compiler* compiler) {
   if (table->count == 0) return false;
 
   // Find the entry
@@ -104,11 +104,11 @@ bool tableDelete(Table* table, Value key) {
   return true;
 }
 
-void tableAddAll(Table* from, Table* to) {
+void tableAddAll(Table* from, Table* to, VirtualMachine* vm, Compiler* compiler) {
   for (int i = 0; i < from->capacity; i++) {
     Entry* entry = &from->entries[i];
     if (!IS_EMPTY(entry->key)) {
-      tableSet(to, entry->key, entry->value);
+      tableSet(to, entry->key, entry->value, vm, compiler);
     }
   }
 }
@@ -144,4 +144,3 @@ ObjString* tableFindString(Table* table, const char* chars, int length, uint32_t
     index = (index + 1) % table->capacity;
   }
 }
-

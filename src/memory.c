@@ -34,7 +34,7 @@ static void freeObject(Object* obj, VirtualMachine* vm, Compiler* compiler) {
     }
     case OBJ_FUNCTION: {
       ObjFunction* function = (ObjFunction*)obj;
-      freeChunk(&function->chunk);
+      freeChunk(&function->chunk, vm, compiler);
       FREE(ObjFunction, obj, vm, compiler);
       break;
     }

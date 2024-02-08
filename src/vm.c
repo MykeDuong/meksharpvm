@@ -5,7 +5,6 @@
 #include <string.h>
 #include <stdarg.h>
 
-
 #include "bytechunk.h"
 #include "common.h"
 #include "debug.h"
@@ -49,29 +48,29 @@ static void runtimeError(VirtualMachine* vm, const char* format, ...) {
 }
 
 static void defineNative(VirtualMachine* vm, const char* name, NativeFn function) {
-  push(vm, OBJECT_VAL(createString(vm, name, (int)strlen(name))));
-  push(vm, OBJECT_VAL(newNative(vm, function)));
-  tableSet(&vm->globals, vm->stack[0], vm->stack[1]);
+  push(vm, OBJECT_VAL(createString(vm, NULL, name, (int)strlen(name))));
+  push(vm, OBJECT_VAL(newNative(vm, NULL, function)));
+  tableSet(&vm->globals, vm->stack[0], vm->stack[1], vm, NULL);
   pop(vm);
   pop(vm);
 }
 
 void initVM(VirtualMachine* vm) {
-  vm->stack = ALLOCATE(Value, UINT8_COUNT);
+  vm->stack = ALLOCATE(Value, UINT8_COUNT, vm, NULL);
   vm->stackCapacity = UINT8_COUNT;
   resetStack(vm);
   vm->objects = NULL;
-  initTable(&vm->strings);
-  initTable(&vm->globals);
+  initTable(&vm->strings, vm, NULL);
+  initTable(&vm->globals, vm, NULL);
   defineNative(vm, "clock", clockNative);
 }
 
 void freeVM(VirtualMachine* vm) {
-  freeTable(&vm->strings);
-  freeTable(&vm->globals);
-  freeTable(&vm->globals);
-  freeObjects(vm);
-  FREE_ARRAY(Value, vm->stack, vm->stackCapacity);
+  freeTable(&vm->strings, vm, NULL);
+  freeTable(&vm->globals, vm, NULL);
+  freeTable(&vm->globals, vm, NULL);
+  freeObjects(vm, NULL);
+  FREE_ARRAY(Value, vm->stack, vm->stackCapacity, vm, NULL);
 }
 
 void push(VirtualMachine* vm, Value value) {
@@ -80,7 +79,7 @@ void push(VirtualMachine* vm, Value value) {
     int oldCap = vm->stackCapacity;
     int pos = (int)(vm->stackTop - vm->stack);
     vm->stackCapacity = GROW_CAPACITY(oldCap);
-    vm->stack = GROW_ARRAY(Value, vm->stack, oldCap, vm->stackCapacity);
+    vm->stack = GROW_ARRAY(Value, vm->stack, oldCap, vm->stackCapacity, vm, NULL);
     vm->stackTop = vm->stack + pos;
   }
 
@@ -136,7 +135,7 @@ static bool callValue(VirtualMachine* vm, Value callee, int argCount) {
 }
 
 static ObjUpvalue* captureUpvalue(VirtualMachine* vm, Value* local) {
-  ObjUpvalue* createdUpvalue = newUpvalue(vm, local);
+  ObjUpvalue* createdUpvalue = newUpvalue(vm, NULL, local);
   return createdUpvalue;
 }
 
@@ -153,7 +152,7 @@ static void concatenate(VirtualMachine* vm) {
   memcpy(chars, a->chars, a->length);
   memcpy(chars + a->length, b->chars, b->length);
   chars[length] = '\0';
-  ObjString* result = createString(vm, chars, length);
+  ObjString* result = createString(vm, NULL, chars, length);
 
   push(vm, OBJECT_VAL(result));
 }
@@ -230,14 +229,14 @@ static InterpretResult run(VirtualMachine* vm) {
       }
       case OP_DEFINE_GLOBAL: {
         Value name = READ_CONSTANT(); 
-        tableSet(&vm->globals, name, peek(vm, 0));
+        tableSet(&vm->globals, name, peek(vm, 0), vm, NULL);
         pop(vm);
         break;
       }
       case OP_SET_GLOBAL: {
         Value name = READ_CONSTANT();
-        if (tableSet(&vm->globals, name, peek(vm, 0))) {
-          tableDelete(&vm->globals, name);
+        if (tableSet(&vm->globals, name, peek(vm, 0), vm, NULL)) {
+          tableDelete(&vm->globals, name, vm, NULL);
           ObjString* nameString = AS_STRING(name);
           runtimeError(vm, "Undefined variable '%.*s'", nameString->length, nameString->chars);
           return INTERPRET_RUNTIME_ERROR;
@@ -318,7 +317,7 @@ static InterpretResult run(VirtualMachine* vm) {
       }
       case OP_CLOSURE: {
         ObjFunction* function = AS_FUNCTION(READ_CONSTANT());
-        ObjClosure* closure = newClosure(vm, function);
+        ObjClosure* closure = newClosure(vm, NULL, function);
         push(vm, OBJECT_VAL(closure));
 
         for (int i = 0; i < closure->upvalueCount; i++) {
@@ -362,7 +361,7 @@ InterpretResult interpret(VirtualMachine* vm, const char* source) {
   if (function == NULL) return INTERPRET_COMPILE_ERROR;
 
   push(vm, OBJECT_VAL(function));
-  ObjClosure* closure = newClosure(vm, function);
+  ObjClosure* closure = newClosure(vm, NULL, function);
   pop(vm);
   push(vm, OBJECT_VAL(closure));
   call(vm, closure, 0);
