@@ -3,30 +3,14 @@
 
 #include "common.h"
 
-typedef struct VirtualMachine_Struct VirtualMachine;
-typedef struct Compiler_Struct Compiler;
-typedef struct Value_Struct Value;
-typedef struct Object Object;
+#define GROW_CAPACITY(capacity) ((capacity) < 8 ? 8 : (capacity) * 2)
 
-#define ALLOCATE(type, count, vm, compiler) \
-  (type*)reallocate(NULL, 0, sizeof(type) * (count), vm, compiler)
+#define GROW_ARRAY(type, pointer, oldCount, newCount)                          \
+  (type *)reallocate(pointer, sizeof(type) * oldCount, sizeof(type) * newCount)
 
-#define FREE(type, pointer, vm, compiler) reallocate(pointer, sizeof(type), 0, vm, compiler)
+#define FREE_ARRAY(type, pointer, oldCount)                                    \
+  reallocate(pointer, sizeof(type) * oldCount, 0)
 
-#define GROW_CAPACITY(capacity) \
-  ((capacity) < 8 ? 8 : (capacity) * 2)
+void *reallocate(void *pointer, size_t oldSize, size_t newSize);
 
-#define GROW_ARRAY(type, pointer, oldCount, newCount, vm, compiler) \
-  (type*) reallocate(pointer, sizeof(type) * (oldCount), sizeof(type) * (newCount), vm, compiler)
-
-#define FREE_ARRAY(type, pointer, oldCount, vm, compiler) \
-  reallocate(pointer, sizeof(type) * (oldCount), 0, vm, compiler)
-
-void* reallocate(void* pointer, size_t oldSize, size_t newSize, VirtualMachine* vm, Compiler* compiler);
-void markObject(Object* obj);
-void markValue(Value value);
-void collectGarbage(VirtualMachine* vm, Compiler* compiler);
-void freeObjects(VirtualMachine* vm, Compiler* compiler);
-
-#endif 
-
+#endif /* MEKVM_MEMORY_H */

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 #include "bytechunk.h"
 #include "common.h"
@@ -65,16 +66,21 @@ void initVM(VirtualMachine* vm) {
 }
 
 void freeVM(VirtualMachine* vm) {
+  printf("--------------- Free String Table VM\n\n");
   freeTable(&vm->strings, vm, NULL);
+  printf("--------------- Free Global Table VM\n\n");
   freeTable(&vm->globals, vm, NULL);
-  freeTable(&vm->globals, vm, NULL);
+  printf("--------------- Free Objects VM \n\n");
   freeObjects(vm, NULL);
+  printf("--------------- Free Stack VM \n\n");
   FREE_ARRAY(Value, vm->stack, vm->stackCapacity, vm, NULL);
 }
 
 void push(VirtualMachine* vm, Value value) {
   if (vm->stackCapacity < (int)(vm->stackTop - vm->stack) + 1) {
     // Grow the stack
+    printf("Stack growth\n");
+    exit(80);
     int oldCap = vm->stackCapacity;
     int pos = (int)(vm->stackTop - vm->stack);
     vm->stackCapacity = GROW_CAPACITY(oldCap);

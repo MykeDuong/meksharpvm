@@ -3,9 +3,7 @@
 
 #include "bytechunk.h"
 
-int getLine(ByteChunk* chunk, int offset); 
+void disassembleByteChunk(ByteChunk *bytechunk, const char *name);
+int disassembleInstruction(ByteChunk *bytechunk, int offset);
 
-void disassembleChunk(ByteChunk* chunk, const char* name);
-int disassembleInstruction(ByteChunk* chunk, int offset);
-
-#endif 
+#endif /* MEKVM_DEBUG_H */
