@@ -19,7 +19,8 @@ void initScanner(const char *source) {
 }
 
 static bool isAlpha(char c) {
-  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+  bool result = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+  return result;
 }
 
 static bool isDigit(char c) { return c >= '0' && c <= '9'; }
@@ -96,10 +97,16 @@ static void skipWhitespace() {
 
 static TokenType checkKeyword(int start, int length, const char *rest,
                               TokenType type) {
+  printf("ExpectedRest: %.*s\n", length, rest);
+  printf("True Rest: %.*s\n", length, scanner.start + start);
+  printf("Word Length: %d\n", (int)(scanner.current - scanner.start));
+  printf("Expected Word Length: %d\n", start + length);
   if (scanner.current - scanner.start == start + length &&
-      memcmp(scanner.start + start, rest, length)) {
+      memcmp(scanner.start + start, rest, length) == 0) {
+    printf("true\n");
     return type;
   }
+  printf("false\n");
   return TOKEN_IDENTIFIER;
 }
 
@@ -154,8 +161,9 @@ static TokenType identifierType() {
 }
 
 static Token identifier() {
-  if (isAlpha(peek()) || isDigit(peek()))
+  while (isAlpha(peek()) || isDigit(peek())) {
     advance();
+  }
   return makeToken(identifierType());
 }
 

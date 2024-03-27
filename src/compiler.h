@@ -1,6 +1,8 @@
 #ifndef MEKVM_COMPILER_H
 #define MEKVM_COMPILER_H
 
-void compile(const char *source);
+#include "vm.h"
+
+bool compile(const char *source, ByteChunk *byteChunk);
 
 #endif /* MEKVM_COMPILER_H */
