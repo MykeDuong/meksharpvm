@@ -56,10 +56,7 @@ bool valuesEqual(Value a, Value b) {
     case VALUE_NUMBER:
       return AS_NUMBER(a) == AS_NUMBER(b);
     case VALUE_OBJECT: {
-      ObjectString *aString = AS_STRING(a);
-      ObjectString *bString = AS_STRING(b);
-      return aString->length == bString->length &&
-             memcmp(aString->chars, bString->chars, aString->length) == 0;
+      return AS_OBJECT(a) == AS_OBJECT(b);
     }
     default:
       fprintf(stderr, "Unreachable code reached in valuesEqual()\n");

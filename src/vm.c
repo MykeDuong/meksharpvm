@@ -30,10 +30,14 @@ static void runtimeError(const char *format, ...) {
 
 void initVirtualMachine() {
   resetStack();
+  initTable(&vm.strings);
   vm.objects = NULL;
 }
 
-void freeVirtualMachine() { freeObjects(); }
+void freeVirtualMachine() {
+  freeTable(&vm.strings);
+  freeObjects();
+}
 
 void push(Value value) {
   *vm.stackTop = value;
