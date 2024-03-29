@@ -1,7 +1,5 @@
-var x = 1;
-
-while (x < 10) {
-  print "Hello";
+var i = 0;
+for (;;) {
+  print i;
+  i = i + 1;
 }
-
-
