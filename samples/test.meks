@@ -1,9 +1,7 @@
-var x = true;
+var x = 1;
 
-if (x == true) {
-  print "True";
-} else {
-  print "False";
+while (x < 10) {
+  print "Hello";
 }
 
-print "Finished";
+

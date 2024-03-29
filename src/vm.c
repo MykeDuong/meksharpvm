@@ -1,4 +1,5 @@
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -135,6 +136,7 @@ static InterpretResult run() {
           runtimeError("Undefined variable '%s'.", name->chars);
           return INTERPRET_RUNTIME_ERROR;
         }
+        break;
       }
       case OP_GET_GLOBAL: {
         ObjectString *name = READ_STRING();
@@ -209,6 +211,11 @@ static InterpretResult run() {
         uint16_t offset = READ_SHORT();
         if (isFalsey(peek(0)))
           vm.ip += offset;
+        break;
+      }
+      case OP_LOOP: {
+        uint16_t offset = READ_SHORT();
+        vm.ip -= offset;
         break;
       }
       case OP_RETURN: {
