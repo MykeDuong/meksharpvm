@@ -1,15 +1,9 @@
-var a = 1;
-var b = 2;
+var x = true;
 
-{
-  var a = "Hello";
-  var b = "World";
-  {
-    var a = b;
-    var b = "Here";
-    print a + " is " + b; 
-  }
-  print a + " " + b;
+if (x == true) {
+  print "True";
+} else {
+  print "False";
 }
 
-print a + b;
+print "Finished";

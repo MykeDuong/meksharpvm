@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "bytechunk.h"
 #include "debug.h"
 #include "value.h"
 
@@ -30,6 +31,15 @@ static int byteInstruction(const char *name, ByteChunk *byteChunk, int offset) {
   uint8_t slot = byteChunk->code[offset + 1];
   printf("%-16s %4d\n", name, slot);
   return offset + 2;
+}
+
+static int jumpInstruction(const char *name, int sign, ByteChunk *byteChunk,
+                           int offset) {
+  uint16_t jump = (uint16_t)(byteChunk->code[offset + 1] << 8);
+  jump |= byteChunk->code[offset + 2];
+  printf("%-16s %4d -> %d\n", name, offset, offset + 3 + sign * jump);
+
+  return offset + 3;
 }
 
 int disassembleInstruction(ByteChunk *byteChunk, int offset) {
@@ -83,6 +93,10 @@ int disassembleInstruction(ByteChunk *byteChunk, int offset) {
       return simpleInstruction("OP_NEGATE", offset);
     case OP_PRINT:
       return simpleInstruction("OP_PRINT", offset);
+    case OP_JUMP:
+      return jumpInstruction("OP_JUMP", 1, byteChunk, offset);
+    case OP_JUMP_IF_FALSE:
+      return jumpInstruction("OP_JUMP_IF_FALSE", 1, byteChunk, offset);
     case OP_RETURN:
       return simpleInstruction("OP_RETURN", offset);
     default:
