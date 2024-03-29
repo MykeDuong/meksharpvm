@@ -1,5 +1,15 @@
-var breakfast = "beignets";
-var beverage = "cafe au lait";
-breakfast = "beignets with " + beverage;
+var a = 1;
+var b = 2;
 
-print breakfast;
+{
+  var a = "Hello";
+  var b = "World";
+  {
+    var a = b;
+    var b = "Here";
+    print a + " is " + b; 
+  }
+  print a + " " + b;
+}
+
+print a + b;
