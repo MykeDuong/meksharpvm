@@ -1,11 +1,5 @@
-var f;
+var breakfast = "beignets";
+var beverage = "cafe au lait";
+breakfast = "beignets with " + beverage;
 
-{
-  var local = "local";
-  fun f_() {
-    print local;
-  }
-  f = f_;
-}
-
-f(); // expect: local
+print breakfast;
