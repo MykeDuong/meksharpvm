@@ -1,5 +1,6 @@
 #include <stdlib.h>
 
+#include "bytechunk.h"
 #include "memory.h"
 #include "object.h"
 #include "value.h"
@@ -21,6 +22,12 @@ void *reallocate(void *pointer, size_t oldSize, size_t newSize) {
 
 static void freeObject(Object *object) {
   switch (object->type) {
+    case OBJECT_FUNCTION: {
+      ObjectFunction *function = (ObjectFunction *)object;
+      freeByteChunk(&function->byteChunk);
+      FREE(ObjectFunction, object);
+      break;
+    }
     case OBJECT_STRING: {
       ObjectString *string = (ObjectString *)object;
       FREE_ARRAY(char, string->chars, string->length + 1);

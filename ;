@@ -26,9 +26,8 @@ static void runtimeError(const char *format, ...) {
   va_end(args);
   fputs("\n", stderr);
 
-  CallFrame *frame = &vm.frames[vm.frameCount - 1];
-  size_t instruction = frame->ip - frame->function->byteChunk.code - 1;
-  int line = frame->function->byteChunk.lines[instruction];
+  size_t instruction = vm.ip - vm.byteChunk->code - 1;
+  int line = vm.byteChunk->lines[instruction];
   fprintf(stderr, "[line %d] in script\n", line);
   resetStack();
 }
@@ -80,11 +79,9 @@ static void concatenate() {
 static InterpretResult run() {
   CallFrame *frame = &vm.frames[vm.frameCount - 1];
 
-#define READ_BYTE() (*frame->ip++)
-#define READ_CONSTANT()                                                        \
-  (frame->function->byteChunk.constants.values[READ_BYTE()])
-#define READ_SHORT()                                                           \
-  (frame->ip += 2, (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
+#define READ_BYTE() (*vm.ip++)
+#define READ_CONSTANT() (vm.byteChunk->constants.values[READ_BYTE()])
+#define READ_SHORT() (vm.ip += 2, (uint16_t)((vm.ip[-2] << 8) | vm.ip[-1]))
 #define READ_STRING() AS_STRING(READ_CONSTANT())
 #define BINARY_OP(valueType, op)                                               \
   do {                                                                         \
@@ -244,10 +241,9 @@ InterpretResult interpret(const char *source) {
     return INTERPRET_COMPILE_ERROR;
 
   push(CREATE_OBJECT_VALUE(function));
-  CallFrame *frame = &vm.frames[vm.frameCount++];
-  frame->function = function;
-  frame->ip = function->byteChunk.code;
-  frame->slots = vm.stack;
 
-  return run();
+  InterpretResult result = run();
+  freeByteChunk(&byteChunk);
+
+  return result;
 }
