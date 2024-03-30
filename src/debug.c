@@ -99,6 +99,8 @@ int disassembleInstruction(ByteChunk *byteChunk, int offset) {
       return jumpInstruction("OP_JUMP_IF_FALSE", 1, byteChunk, offset);
     case OP_LOOP:
       return jumpInstruction("OP_LOOP", -1, byteChunk, offset);
+    case OP_CALL:
+      return byteInstruction("OP_CALL", byteChunk, offset);
     case OP_RETURN:
       return simpleInstruction("OP_RETURN", offset);
     default:
