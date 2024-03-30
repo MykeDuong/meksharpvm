@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include "bytechunk.h"
 #include "compiler.h"
@@ -12,6 +13,20 @@
 #include "vm.h"
 
 VirtualMachine vm;
+
+static Value clockNative(int argCount, Value *args) {
+  return CREATE_NUMBER_VALUE((double)clock() / CLOCKS_PER_SEC);
+}
+
+static Value printNative(int argCount, Value *args) {
+  for (int i = 0; i < argCount; i++) {
+    printValue(args[i]);
+    if (i != argCount - 1)
+      printf(" ");
+  }
+  printf("\n");
+  return CREATE_NAH_VALUE();
+}
 
 static void resetStack() {
   vm.stackTop = vm.stack;
@@ -42,12 +57,23 @@ static void runtimeError(const char *format, ...) {
   resetStack();
 }
 
+static void defineNativeFunction(const char *name, NativeFn function) {
+  push(CREATE_OBJECT_VALUE(copyString(name, (int)strlen(name))));
+  push(CREATE_OBJECT_VALUE(newNativeFunction(function)));
+  tableSet(&vm.globals, AS_STRING(vm.stack[0]), vm.stack[1]);
+  pop();
+  pop();
+}
+
 void initVirtualMachine() {
   resetStack();
   vm.objects = NULL;
 
   initTable(&vm.globals);
   initTable(&vm.strings);
+
+  defineNativeFunction("clock", clockNative);
+  defineNativeFunction("printf", printNative);
 }
 
 void freeVirtualMachine() {
@@ -92,6 +118,13 @@ static bool callValue(Value callee, int argCount) {
     switch (OBJECT_TYPE(callee)) {
       case OBJECT_FUNCTION:
         return call(AS_FUNCTION(callee), argCount);
+      case OBJECT_NATIVE_FUNCTION: {
+        NativeFn native = AS_NATIVE_FUNCTION(callee);
+        Value result = native(argCount, vm.stackTop - argCount);
+        vm.stackTop -= argCount + 1;
+        push(result);
+        return true;
+      }
       default:
         break; // Non-callable object called
     }
