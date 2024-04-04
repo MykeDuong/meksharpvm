@@ -3,6 +3,7 @@
 
 #include "bytechunk.h"
 #include "debug.h"
+#include "object.h"
 #include "value.h"
 
 void disassembleByteChunk(ByteChunk *byteChunk, const char *name) {
@@ -73,6 +74,10 @@ int disassembleInstruction(ByteChunk *byteChunk, int offset) {
       return constantInstruction("OP_SET_GLOBAL", byteChunk, offset);
     case OP_DEFINE_GLOBAL:
       return constantInstruction("OP_DEFINE_GLOBAL", byteChunk, offset);
+    case OP_GET_UPVALUE:
+      return byteInstruction("OP_GET_UPVALUE", byteChunk, offset);
+    case OP_SET_UPVALUE:
+      return byteInstruction("OP_SET_UPVALUE", byteChunk, offset);
     case OP_EQUAL:
       return simpleInstruction("OP_EQUAL", offset);
     case OP_GREATER:
@@ -101,6 +106,26 @@ int disassembleInstruction(ByteChunk *byteChunk, int offset) {
       return jumpInstruction("OP_LOOP", -1, byteChunk, offset);
     case OP_CALL:
       return byteInstruction("OP_CALL", byteChunk, offset);
+    case OP_CLOSURE: {
+      offset++;
+      uint8_t constant = byteChunk->code[offset++];
+      printf("%-16s %4d ", "OP_CLOSURE", constant);
+      printValue(byteChunk->constants.values[constant]);
+      printf("\n");
+
+      ObjectFunction *function =
+          AS_FUNCTION(byteChunk->constants.values[constant]);
+
+      for (int j = 0; j < function->upvalueCount; j++) {
+        int isLocal = byteChunk->code[offset++];
+        int index = byteChunk->code[offset++];
+        // Local starts from 1 (offseting the function at the first slot of
+        // the stack)
+        // Upvalue starts from 0
+        printf("%04d    |                     %s %d\n", offset - 2,
+               isLocal ? "local" : "upvalue", index);
+      }
+    }
     case OP_RETURN:
       return simpleInstruction("OP_RETURN", offset);
     default:

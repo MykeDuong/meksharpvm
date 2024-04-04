@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,6 +49,11 @@ typedef struct {
   int depth;
 } Local;
 
+typedef struct {
+  uint8_t index;
+  bool isLocal;
+} Upvalue;
+
 typedef enum {
   FUNCTION_TYPE_SCRIPT,
   FUNCTION_TYPE_FUNCTION,
@@ -60,6 +66,7 @@ typedef struct Compiler {
 
   Local locals[UINT8_COUNT];
   int localCount;
+  Upvalue upvalues[UINT8_COUNT];
   int scopeDepth;
 } Compiler;
 
@@ -235,6 +242,7 @@ static void declaration();
 static uint8_t argumentList();
 static uint8_t identifierConstant(Token *name);
 static int resolveLocal(Compiler *compiler, Token *name);
+static int resolveUpvalue(Compiler *compiler, Token *name);
 static ParseRule *getRule(TokenType type);
 static void parsePrecedence(Precedence precedence);
 
@@ -349,6 +357,9 @@ static void namedVariable(Token name, bool canAssign) {
   if (arg != -1) {
     getOp = OP_GET_LOCAL;
     setOp = OP_SET_LOCAL;
+  } else if ((arg = resolveUpvalue(current, &name)) != -1) {
+    getOp = OP_GET_UPVALUE;
+    setOp = OP_SET_UPVALUE;
   } else {
     arg = identifierConstant(&name);
     getOp = OP_GET_GLOBAL;
@@ -476,6 +487,59 @@ static int resolveLocal(Compiler *compiler, Token *name) {
   return -1;
 }
 
+/**
+ * Resolves and returns the index of the upvalue within the compiler
+ * @param compiler    The current compiler (that contains the upvalue to be
+ *                    added)
+ * @param index       The index of the upvalue within the enclosing scope local
+ *                    if it appears in the enclosing scope, or the index in the
+ *                    enclosing scope's upvalues if it does not appear in the
+ *                    enclosing scope's locals
+ * @param isLocal     Whether the upvalue appears in the immediate enclosing
+ *                    scope
+ */
+static int addUpvalue(Compiler *compiler, uint8_t index, bool isLocal) {
+  int upvalueCount = compiler->function->upvalueCount;
+
+  // Check if the upvalue already appears within the compiler's upvalues
+  for (int i = 0; i < upvalueCount; i++) {
+    Upvalue *upvalue = &compiler->upvalues[i];
+    if (upvalue->index == index && upvalue->isLocal == isLocal) {
+      return i;
+    }
+  }
+
+  if (upvalueCount == UINT8_COUNT) {
+    error("Too many closure variables in function.");
+    return 0;
+  }
+
+  compiler->upvalues[upvalueCount].isLocal = isLocal;
+  compiler->upvalues[upvalueCount].index = index;
+  return compiler->function->upvalueCount++;
+}
+
+static int resolveUpvalue(Compiler *compiler, Token *name) {
+  if (compiler->enclosing == NULL)
+    return -1;
+
+  // Find the upvalue in the enclosing scope
+  int local = resolveLocal(compiler->enclosing, name);
+
+  if (local != -1) {
+    // If the value DOES appear in the enclosing scope
+    return addUpvalue(compiler, (uint8_t)local, true);
+  }
+
+  // Recurse if it DOES NOT appear in the enclosing scope
+  int upvalue = resolveUpvalue(compiler->enclosing, name);
+  if (upvalue != -1) {
+    return addUpvalue(compiler, (uint8_t)upvalue, false);
+  }
+
+  return -1;
+}
+
 static void addLocal(Token name) {
   if (current->localCount == UINT8_MAX) {
     error("Too many local variables in functions");
@@ -575,7 +639,12 @@ static void function(FunctionType type) {
   consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
   block();
   ObjectFunction *function = endCompiler();
-  emitBytes(OP_CONSTANT, makeConstant(CREATE_OBJECT_VALUE(function)));
+  emitBytes(OP_CLOSURE, makeConstant(CREATE_OBJECT_VALUE(function)));
+
+  for (int i = 0; i < function->upvalueCount; i++) {
+    emitByte(compiler.upvalues[i].isLocal ? 1 : 0);
+    emitByte(compiler.upvalues[i].index);
+  }
 }
 
 static void funDeclaration() {

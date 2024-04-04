@@ -1,1 +1,9 @@
-printf("Hello", "World!");
+var x = "global";
+fun outer() {
+  var x = "outer";
+  fun inner() {
+    print x;
+  }
+  inner();
+}
+outer();
