@@ -70,6 +70,10 @@ void initVirtualMachine() {
   resetStack();
   vm.objects = NULL;
 
+  vm.grayCount = 0;
+  vm.grayCapacity = 0;
+  vm.grayStack = NULL;
+
   initTable(&vm.globals);
   initTable(&vm.strings);
 

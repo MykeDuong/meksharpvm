@@ -27,6 +27,15 @@ typedef struct {
   Table strings;
   ObjectUpvalue *openUpvalues;
   Object *objects;
+
+  // Tricolor Abstraction
+  //  + White: Object not referenced
+  //  + Gray: Object is referenced and currently visiting
+  //  + Black: Object is referenced and visited
+  int grayCount;
+  int grayCapacity;
+  Object **grayStack;
+
 } VirtualMachine;
 
 typedef enum {

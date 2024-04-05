@@ -1,9 +1,11 @@
-var x = "global";
-fun outer() {
-  var x = "outer";
-  fun inner() {
-    print x;
+fun f1() {
+  var x = "Hello World";
+  fun f2() {
+    fun f3() {
+      print x;
+    }
+    return f3;
   }
-  inner();
 }
-outer();
+
+f1()()();
