@@ -30,6 +30,7 @@ static Value printNative(int argCount, Value *args) {
 
 static void resetStack() {
   vm.stackTop = vm.stack;
+  vm.openUpvalues = NULL;
   vm.frameCount = 0;
 }
 
@@ -135,8 +136,40 @@ static bool callValue(Value callee, int argCount) {
 }
 
 static ObjectUpvalue *captureUpvalue(Value *local) {
+  // Traverse the list of open upvalues
+  ObjectUpvalue *previousUpvalue = NULL;
+  ObjectUpvalue *upvalue = vm.openUpvalues;
+  while (upvalue != NULL && upvalue->location > local) {
+    // Not yet to the slot of the upvalue for the local
+    previousUpvalue = upvalue;
+    upvalue = upvalue->next;
+  }
+
+  // There exist a slot in the open upvalues that captures the value
+  if (upvalue != NULL && upvalue->location == local) {
+    return upvalue;
+  }
+
+  // If there is no such captured upvalue, create a new one
   ObjectUpvalue *createdUpvalue = newUpvalue(local);
+  createdUpvalue->next = upvalue;
+
+  if (previousUpvalue == NULL) {
+    vm.openUpvalues = createdUpvalue;
+  } else {
+    previousUpvalue->next = createdUpvalue;
+  }
+
   return createdUpvalue;
+}
+
+static void closeUpvalues(Value *last) {
+  while (vm.openUpvalues != NULL && vm.openUpvalues->location >= last) {
+    ObjectUpvalue *upvalue = vm.openUpvalues;
+    upvalue->closed = *upvalue->location;
+    upvalue->location = &upvalue->closed;
+    vm.openUpvalues = upvalue->next;
+  }
 }
 
 static bool isFalsey(Value value) {
@@ -344,8 +377,14 @@ static InterpretResult run() {
         }
         break;
       }
+      case OP_CLOSE_UPVALUE: {
+        closeUpvalues(vm.stackTop - 1);
+        pop();
+        break;
+      }
       case OP_RETURN: {
         Value result = pop();
+        closeUpvalues(frame->slots);
         vm.frameCount--;
         if (vm.frameCount == 0) {
           pop();

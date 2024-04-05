@@ -92,7 +92,9 @@ ObjectString *copyString(const char *chars, int length) {
 
 ObjectUpvalue *newUpvalue(Value *slot) {
   ObjectUpvalue *upvalue = ALLOCATE_OBJECT(ObjectUpvalue, OBJECT_UPVALUE);
+  upvalue->closed = CREATE_NAH_VALUE();
   upvalue->location = slot;
+  upvalue->next = NULL;
   return upvalue;
 }
 
