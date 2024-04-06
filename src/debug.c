@@ -78,6 +78,10 @@ int disassembleInstruction(ByteChunk *byteChunk, int offset) {
       return byteInstruction("OP_GET_UPVALUE", byteChunk, offset);
     case OP_SET_UPVALUE:
       return byteInstruction("OP_SET_UPVALUE", byteChunk, offset);
+    case OP_GET_PROPERTY:
+      return constantInstruction("OP_GET_PROPERTY", byteChunk, offset);
+    case OP_SET_PROPERTY:
+      return constantInstruction("OP_SET_PROPERTY", byteChunk, offset);
     case OP_EQUAL:
       return simpleInstruction("OP_EQUAL", offset);
     case OP_GREATER:

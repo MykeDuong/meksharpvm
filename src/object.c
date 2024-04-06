@@ -80,6 +80,13 @@ ObjectNativeFunction *newNativeFunction(NativeFn function) {
   return native;
 }
 
+ObjectInstance *newInstance(ObjectClass *klass) {
+  ObjectInstance *instance = ALLOCATE_OBJECT(ObjectInstance, OBJECT_INSTANCE);
+  instance->klass = klass;
+  initTable(&instance->fields);
+  return instance;
+}
+
 ObjectString *takeString(char *chars, int length) {
   uint32_t hash = hashString(chars, length);
   ObjectString *interned = tableFindString(&vm.strings, chars, length, hash);
@@ -140,6 +147,9 @@ void printObject(Value value) {
       break;
     case OBJECT_NATIVE_FUNCTION:
       printf("<native fn>");
+      break;
+    case OBJECT_INSTANCE:
+      printf("Instance of %s", AS_INSTANCE(value)->klass->name->chars);
       break;
     case OBJECT_STRING:
       printf("%s", AS_CSTRING(value));

@@ -123,6 +123,11 @@ static bool call(ObjectClosure *closure, int argCount) {
 static bool callValue(Value callee, int argCount) {
   if (IS_OBJECT(callee)) {
     switch (OBJECT_TYPE(callee)) {
+      case OBJECT_CLASS: {
+        ObjectClass *klass = AS_CLASS(callee);
+        vm.stackTop[-argCount - 1] = CREATE_OBJECT_VALUE(newInstance(klass));
+        return true;
+      }
       case OBJECT_CLOSURE: {
         return call(AS_CLOSURE(callee), argCount);
       }
@@ -296,6 +301,39 @@ static InterpretResult run() {
         uint8_t slot = READ_BYTE();
         // Deference Value slot referenced by the upvalue
         *frame->closure->upvalues[slot]->location = peek(0);
+        break;
+      }
+      case OP_GET_PROPERTY: {
+        if (!IS_INSTANCE(peek(0))) {
+          runtimeError("Only instances have properties.");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        ObjectInstance *instance = AS_INSTANCE(peek(0));
+        ObjectString *name = READ_STRING();
+
+        Value value;
+        if (tableGet(&instance->fields, name, &value)) {
+          pop(); // Instance
+          push(value);
+          break;
+        }
+
+        runtimeError("Undefined property '%s'.", name->chars);
+        return INTERPRET_RUNTIME_ERROR;
+      }
+      case OP_SET_PROPERTY: {
+        // Stack: instance -> value
+        // ByteChunk: [Instance -> Value Expression] -> OP_SET_PROPERTY -> field
+
+        if (!IS_INSTANCE(peek(1))) {
+          runtimeError("Only instances have properties.");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        ObjectInstance *instance = AS_INSTANCE(peek(1));
+        tableSet(&instance->fields, READ_STRING(), peek(0));
+        Value value = pop(); // Value
+        pop();               // Instance
+        push(value);         // Push value as the result of assignment
         break;
       }
       case OP_EQUAL: {

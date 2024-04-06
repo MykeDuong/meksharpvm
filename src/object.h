@@ -3,6 +3,7 @@
 
 #include "bytechunk.h"
 #include "common.h"
+#include "table.h"
 #include "value.h"
 
 #define OBJECT_TYPE(value) (AS_OBJECT(value)->type)
@@ -12,10 +13,12 @@
 #define IS_FUNCTION(value) isObjectType(value, OBJECT_FUNCTION)
 #define IS_NATIVE_FUNCTION(value) isObjectType(value, OBJECT_NATIVE_FUNCTION)
 #define IS_STRING(value) isObjectType(value, OBJECT_STRING)
+#define IS_INSTANCE(value) isObjectType(value, OBJECT_INSTANCE)
 
 #define AS_CLASS(value) ((ObjectClass *)AS_OBJECT(value))
 #define AS_CLOSURE(value) ((ObjectClosure *)AS_OBJECT(value))
 #define AS_FUNCTION(value) ((ObjectFunction *)AS_OBJECT(value))
+#define AS_INSTANCE(value) ((ObjectInstance *)AS_OBJECT(value))
 #define AS_NATIVE_FUNCTION(value)                                              \
   (((ObjectNativeFunction *)AS_OBJECT(value))->function)
 #define AS_STRING(value) ((ObjectString *)AS_OBJECT(value))
@@ -28,6 +31,7 @@ typedef enum {
   OBJECT_STRING,
   OBJECT_CLOSURE,
   OBJECT_UPVALUE,
+  OBJECT_INSTANCE,
 } ObjectType;
 
 struct Object {
@@ -72,6 +76,12 @@ typedef struct {
 
 typedef struct {
   Object object;
+  ObjectClass *klass;
+  Table fields;
+} ObjectInstance;
+
+typedef struct {
+  Object object;
   ObjectFunction *function;
   ObjectUpvalue **upvalues;
   int upvalueCount;
@@ -80,6 +90,7 @@ typedef struct {
 ObjectClass *newClass(ObjectString *name);
 ObjectClosure *newClosure(ObjectFunction *function);
 ObjectFunction *newFunction();
+ObjectInstance *newInstance(ObjectClass *klass);
 ObjectNativeFunction *newNativeFunction(NativeFn function);
 ObjectString *takeString(char *chars, int length);
 ObjectString *copyString(const char *chars, int length);

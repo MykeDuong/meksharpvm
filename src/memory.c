@@ -89,7 +89,13 @@ static void freeObject(Object *object) {
       break;
     }
     case OBJECT_NATIVE_FUNCTION: {
-      FREE(OBJECT_NATIVE_FUNCTION, object);
+      FREE(ObjectNativeFunction, object);
+      break;
+    }
+    case OBJECT_INSTANCE: {
+      ObjectInstance *instance = (ObjectInstance *)object;
+      freeTable(&instance->fields);
+      FREE(ObjectInstance, object);
       break;
     }
     case OBJECT_STRING: {
@@ -143,6 +149,12 @@ static void blackenObject(Object *object) {
     case OBJECT_UPVALUE:
       markValue(((ObjectUpvalue *)object)->closed);
       break;
+    case OBJECT_INSTANCE: {
+      ObjectInstance *instance = (ObjectInstance *)object;
+      markObject((Object *)instance->klass);
+      markTable(&instance->fields);
+      break;
+    }
     case OBJECT_NATIVE_FUNCTION:
     case OBJECT_STRING:
       break;
