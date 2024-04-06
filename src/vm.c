@@ -194,6 +194,8 @@ static void concatenate() {
   chars[length] = '\0';
 
   ObjectString *result = takeString(chars, length);
+  pop();
+  pop();
   push(CREATE_OBJECT_VALUE(result));
 }
 
@@ -403,6 +405,10 @@ static InterpretResult run() {
         frame = &vm.frames[vm.frameCount - 1];
         break;
         return INTERPRET_OK;
+      }
+      case OP_CLASS: {
+        push(CREATE_OBJECT_VALUE(newClass(READ_STRING())));
+        break;
       }
     }
   }

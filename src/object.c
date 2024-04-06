@@ -58,6 +58,12 @@ static uint32_t hashString(const char *key, int length) {
   return hash;
 }
 
+ObjectClass *newClass(ObjectString *name) {
+  ObjectClass *klass = ALLOCATE_OBJECT(ObjectClass, OBJECT_CLASS);
+  klass->name = name;
+  return klass;
+}
+
 ObjectFunction *newFunction() {
   ObjectFunction *function = ALLOCATE_OBJECT(ObjectFunction, OBJECT_FUNCTION);
   function->arity = 0;
@@ -117,6 +123,10 @@ void printFunction(ObjectFunction *function) {
 
 void printObject(Value value) {
   switch (OBJECT_TYPE(value)) {
+    case OBJECT_CLASS: {
+      printf("%s", AS_CLASS(value)->name->chars);
+      break;
+    }
     case OBJECT_CLOSURE: {
       printFunction(AS_CLOSURE(value)->function);
       break;

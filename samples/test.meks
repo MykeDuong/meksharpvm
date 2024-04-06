@@ -1,11 +1,2 @@
-fun f1() {
-  var x = "Hello World";
-  fun f2() {
-    fun f3() {
-      print x;
-    }
-    return f3;
-  }
-}
-
-f1()()();
+class MyClass {}
+print MyClass;

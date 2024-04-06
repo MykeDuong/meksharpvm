@@ -7,11 +7,13 @@
 
 #define OBJECT_TYPE(value) (AS_OBJECT(value)->type)
 
+#define IS_CLASS(value) isObjectType(value, OBJECT_CLASS)
 #define IS_CLOSURE(value) isObjectType(value, OBJECT_CLOSURE)
 #define IS_FUNCTION(value) isObjectType(value, OBJECT_FUNCTION)
 #define IS_NATIVE_FUNCTION(value) isObjectType(value, OBJECT_NATIVE_FUNCTION)
 #define IS_STRING(value) isObjectType(value, OBJECT_STRING)
 
+#define AS_CLASS(value) ((ObjectClass *)AS_OBJECT(value))
 #define AS_CLOSURE(value) ((ObjectClosure *)AS_OBJECT(value))
 #define AS_FUNCTION(value) ((ObjectFunction *)AS_OBJECT(value))
 #define AS_NATIVE_FUNCTION(value)                                              \
@@ -20,6 +22,7 @@
 #define AS_CSTRING(value) (((ObjectString *)AS_OBJECT(value))->chars)
 
 typedef enum {
+  OBJECT_CLASS,
   OBJECT_FUNCTION,
   OBJECT_NATIVE_FUNCTION,
   OBJECT_STRING,
@@ -64,11 +67,17 @@ typedef struct ObjectUpvalue {
 
 typedef struct {
   Object object;
+  ObjectString *name;
+} ObjectClass;
+
+typedef struct {
+  Object object;
   ObjectFunction *function;
   ObjectUpvalue **upvalues;
   int upvalueCount;
 } ObjectClosure;
 
+ObjectClass *newClass(ObjectString *name);
 ObjectClosure *newClosure(ObjectFunction *function);
 ObjectFunction *newFunction();
 ObjectNativeFunction *newNativeFunction(NativeFn function);
