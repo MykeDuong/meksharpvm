@@ -183,6 +183,13 @@ static void closeUpvalues(Value *last) {
   }
 }
 
+static void defineMethod(ObjectString *name) {
+  Value method = peek(0);
+  ObjectClass *klass = AS_CLASS(peek(1));
+  tableSet(&klass->methods, name, method);
+  pop();
+}
+
 static bool isFalsey(Value value) {
   return IS_NAH(value) || (IS_BOOLEAN(value) && !AS_BOOLEAN(value)) ||
          (IS_NUMBER(value) && AS_NUMBER(value) == 0);
@@ -446,6 +453,10 @@ static InterpretResult run() {
       }
       case OP_CLASS: {
         push(CREATE_OBJECT_VALUE(newClass(READ_STRING())));
+        break;
+      }
+      case OP_METHOD: {
+        defineMethod(READ_STRING());
         break;
       }
     }

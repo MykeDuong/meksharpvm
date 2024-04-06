@@ -72,6 +72,7 @@ typedef struct ObjectUpvalue {
 typedef struct {
   Object object;
   ObjectString *name;
+  Table methods;
 } ObjectClass;
 
 typedef struct {

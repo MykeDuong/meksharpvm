@@ -129,6 +129,7 @@ int disassembleInstruction(ByteChunk *byteChunk, int offset) {
         printf("%04d    |                     %s %d\n", offset - 2,
                isLocal ? "local" : "upvalue", index);
       }
+      return offset;
     }
     case OP_CLOSE_UPVALUE:
       return simpleInstruction("OP_CLOSE_UPVALUE", offset);
@@ -136,6 +137,8 @@ int disassembleInstruction(ByteChunk *byteChunk, int offset) {
       return simpleInstruction("OP_RETURN", offset);
     case OP_CLASS:
       return constantInstruction("OP_CLASS", byteChunk, offset);
+    case OP_METHOD:
+      return constantInstruction("OP_METHOD", byteChunk, offset);
     default:
       printf("Unknown opcode %d\n", instruction);
       return offset + 1;
