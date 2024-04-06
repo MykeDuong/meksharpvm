@@ -41,7 +41,11 @@ static ObjectString *allocateString(char *chars, int length, uint32_t hash) {
   string->length = length;
   string->chars = chars;
   string->hash = hash;
+
+  push(CREATE_OBJECT_VALUE(string));
   tableSet(&vm.strings, string, CREATE_NAH_VALUE());
+  pop();
+
   return string;
 }
 

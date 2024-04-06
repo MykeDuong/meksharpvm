@@ -36,6 +36,9 @@ typedef struct {
   int grayCapacity;
   Object **grayStack;
 
+  // States to keep track of allocated memory size
+  size_t bytesAllocated;
+  size_t gcThreshold; // Garbage Collection Threshold
 } VirtualMachine;
 
 typedef enum {

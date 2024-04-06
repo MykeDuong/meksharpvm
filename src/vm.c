@@ -69,6 +69,8 @@ static void defineNativeFunction(const char *name, NativeFn function) {
 void initVirtualMachine() {
   resetStack();
   vm.objects = NULL;
+  vm.bytesAllocated = 0;
+  vm.gcThreshold = 1024 * 1024;
 
   vm.grayCount = 0;
   vm.grayCapacity = 0;
@@ -182,8 +184,9 @@ static bool isFalsey(Value value) {
 }
 
 static void concatenate() {
-  ObjectString *b = AS_STRING(pop());
-  ObjectString *a = AS_STRING(pop());
+  ObjectString *b = AS_STRING(peek(0));
+  ObjectString *a = AS_STRING(peek(1));
+
   int length = a->length + b->length;
   char *chars = ALLOCATE(char, length + 1);
   memcpy(chars, a->chars, a->length);

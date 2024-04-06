@@ -2,6 +2,7 @@
 
 #include "bytechunk.h"
 #include "memory.h"
+#include "vm.h"
 
 void initByteChunk(ByteChunk *byteChunk) {
   byteChunk->count = 0;
@@ -27,7 +28,9 @@ void writeByteChunk(ByteChunk *byteChunk, uint8_t byte, int line) {
 }
 
 int addConstant(ByteChunk *byteChunk, Value value) {
+  push(value);
   writeValueArray(&byteChunk->constants, value);
+  pop();
   return byteChunk->constants.count - 1;
 }
 
