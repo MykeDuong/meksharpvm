@@ -23,7 +23,7 @@ mem-test:
 
 install:
 	make
-	cp ./mkv.out /usr/local/bin/mks
+	cp ./mkv.out /usr/local/bin/mkv
 
 clean:
 	-rm *.out
