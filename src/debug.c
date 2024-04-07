@@ -23,6 +23,16 @@ static int constantInstruction(const char *name, ByteChunk *byteChunk,
   return offset + 2;
 }
 
+static int invokeInstruction(const char *name, ByteChunk *byteChunk,
+                             int offset) {
+  uint8_t constant = byteChunk->code[offset + 1];
+  uint8_t argCount = byteChunk->code[offset + 2];
+  printf("%-16s (%d args) %4d", name, argCount, constant);
+  printValue(byteChunk->constants.values[constant]);
+  printf("\n");
+  return offset + 3;
+}
+
 static int simpleInstruction(const char *name, int offset) {
   printf("%s\n", name);
   return offset + 1;
@@ -110,6 +120,8 @@ int disassembleInstruction(ByteChunk *byteChunk, int offset) {
       return jumpInstruction("OP_LOOP", -1, byteChunk, offset);
     case OP_CALL:
       return byteInstruction("OP_CALL", byteChunk, offset);
+    case OP_INVOKE:
+      return invokeInstruction("OP_INVOKE", byteChunk, offset);
     case OP_CLOSURE: {
       offset++;
       uint8_t constant = byteChunk->code[offset++];

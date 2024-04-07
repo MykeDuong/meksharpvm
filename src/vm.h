@@ -16,15 +16,24 @@ typedef struct {
 } CallFrame;
 
 typedef struct {
+  // Frames
   CallFrame frames[FRAMES_MAX];
   int frameCount;
 
+  // ByteChunk
   ByteChunk *byteChunk;
   uint8_t *ip;
+
+  // Stack
   Value stack[STACK_MAX];
   Value *stackTop;
+
+  // Global values, strings
   Table globals;
   Table strings;
+  ObjectString *initString;
+
+  // Upvalues
   ObjectUpvalue *openUpvalues;
   Object *objects;
 

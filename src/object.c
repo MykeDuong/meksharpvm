@@ -58,6 +58,14 @@ static uint32_t hashString(const char *key, int length) {
   return hash;
 }
 
+ObjectBoundMethod *newBoundMethod(Value receiver, ObjectClosure *method) {
+  ObjectBoundMethod *bound =
+      ALLOCATE_OBJECT(ObjectBoundMethod, OBJECT_BOUND_METHOD);
+  bound->receiver = receiver;
+  bound->method = method;
+  return bound;
+}
+
 ObjectClass *newClass(ObjectString *name) {
   ObjectClass *klass = ALLOCATE_OBJECT(ObjectClass, OBJECT_CLASS);
   klass->name = name;
@@ -129,8 +137,19 @@ void printFunction(ObjectFunction *function) {
   printf("<fn %s>", function->name->chars);
 }
 
+void printMethod(ObjectBoundMethod *method) {
+  ObjectFunction *function = method->method->function;
+
+  printf("<fn %s.%s>", AS_INSTANCE(method->receiver)->klass->name->chars,
+         function->name->chars);
+}
+
 void printObject(Value value) {
   switch (OBJECT_TYPE(value)) {
+    case OBJECT_BOUND_METHOD: {
+      printMethod(AS_BOUND_METHOD(value));
+      break;
+    }
     case OBJECT_CLASS: {
       printf("%s", AS_CLASS(value)->name->chars);
       break;

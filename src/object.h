@@ -8,6 +8,7 @@
 
 #define OBJECT_TYPE(value) (AS_OBJECT(value)->type)
 
+#define IS_BOUND_METHOD(value) isObjectType(value, OBJECT_BOUND_METHOD)
 #define IS_CLASS(value) isObjectType(value, OBJECT_CLASS)
 #define IS_CLOSURE(value) isObjectType(value, OBJECT_CLOSURE)
 #define IS_FUNCTION(value) isObjectType(value, OBJECT_FUNCTION)
@@ -15,6 +16,7 @@
 #define IS_STRING(value) isObjectType(value, OBJECT_STRING)
 #define IS_INSTANCE(value) isObjectType(value, OBJECT_INSTANCE)
 
+#define AS_BOUND_METHOD(value) ((ObjectBoundMethod *)AS_OBJECT(value))
 #define AS_CLASS(value) ((ObjectClass *)AS_OBJECT(value))
 #define AS_CLOSURE(value) ((ObjectClosure *)AS_OBJECT(value))
 #define AS_FUNCTION(value) ((ObjectFunction *)AS_OBJECT(value))
@@ -25,6 +27,7 @@
 #define AS_CSTRING(value) (((ObjectString *)AS_OBJECT(value))->chars)
 
 typedef enum {
+  OBJECT_BOUND_METHOD,
   OBJECT_CLASS,
   OBJECT_FUNCTION,
   OBJECT_NATIVE_FUNCTION,
@@ -71,6 +74,13 @@ typedef struct ObjectUpvalue {
 
 typedef struct {
   Object object;
+  ObjectFunction *function;
+  ObjectUpvalue **upvalues;
+  int upvalueCount;
+} ObjectClosure;
+
+typedef struct {
+  Object object;
   ObjectString *name;
   Table methods;
 } ObjectClass;
@@ -83,11 +93,11 @@ typedef struct {
 
 typedef struct {
   Object object;
-  ObjectFunction *function;
-  ObjectUpvalue **upvalues;
-  int upvalueCount;
-} ObjectClosure;
+  Value receiver;
+  ObjectClosure *method;
+} ObjectBoundMethod;
 
+ObjectBoundMethod *newBoundMethod(Value receiver, ObjectClosure *method);
 ObjectClass *newClass(ObjectString *name);
 ObjectClosure *newClosure(ObjectFunction *function);
 ObjectFunction *newFunction();

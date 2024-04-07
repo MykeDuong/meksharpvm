@@ -68,6 +68,10 @@ static void freeObject(Object *object) {
   printf("%p free type %d\n", (void *)object, object->type);
 #endif
   switch (object->type) {
+    case OBJECT_BOUND_METHOD: {
+      FREE(ObjectBoundMethod, object);
+      break;
+    }
     case OBJECT_CLASS: {
       ObjectClass *klass = (ObjectClass *)object;
       freeTable(&klass->methods);
@@ -129,6 +133,12 @@ static void blackenObject(Object *object) {
 
 #endif /* DEBUG_LOG_GC */
   switch (object->type) {
+    case OBJECT_BOUND_METHOD: {
+      ObjectBoundMethod *boundMethod = (ObjectBoundMethod *)object;
+      markValue(boundMethod->receiver);
+      markObject((Object *)boundMethod->method);
+      break;
+    }
     case OBJECT_CLASS: {
       ObjectClass *klass = (ObjectClass *)object;
       markObject((Object *)klass->name);
@@ -181,6 +191,7 @@ static void markRoots() {
   }
 
   markCompilerRoots();
+  markObject((Object *)vm.initString);
 }
 
 static void traceReferences() {

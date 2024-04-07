@@ -57,7 +57,9 @@ typedef struct {
 
 typedef enum {
   FUNCTION_TYPE_SCRIPT,
+  FUNCTION_TYPE_METHOD,
   FUNCTION_TYPE_FUNCTION,
+  FUNCTION_TYPE_INITIALIZER,
 } FunctionType;
 
 typedef struct Compiler {
@@ -71,9 +73,14 @@ typedef struct Compiler {
   int scopeDepth;
 } Compiler;
 
+typedef struct ClassCompiler {
+  struct ClassCompiler *enclosing;
+} ClassCompiler;
+
 Parser parser;
 Compiler *current = NULL;
 ByteChunk *compilingByteChunk;
+ClassCompiler *currentClass = NULL;
 
 static ByteChunk *currentByteChunk() { return &current->function->byteChunk; }
 
@@ -162,7 +169,12 @@ static int emitJump(uint8_t instruction) {
 }
 
 static void emitReturn() {
-  emitByte(OP_NAH);
+  if (current->type == FUNCTION_TYPE_INITIALIZER) {
+    emitBytes(OP_GET_LOCAL, 0);
+  } else {
+    emitByte(OP_NAH);
+  }
+
   emitByte(OP_RETURN);
 }
 
@@ -207,13 +219,18 @@ static void initCompiler(Compiler *compiler, FunctionType type) {
 
   Local *local = &current->locals[current->localCount++];
   local->depth = 0;
-  local->name.start = "";
   local->isCaptured = false;
-  local->name.length = 0;
+  if (type != FUNCTION_TYPE_FUNCTION) {
+    local->name.start = "this";
+    local->name.length = 4;
+  } else {
+    local->name.start = "";
+    local->name.length = 0;
+  }
 }
 
 static ObjectFunction *endCompiler() {
-  emitByte(OP_RETURN);
+  emitReturn();
   ObjectFunction *function = current->function;
 #ifdef DEBUG_PRINT_CODE
   if (!parser.hadError) {
@@ -329,6 +346,10 @@ static void dot(bool canAssign) {
   if (canAssign && match(TOKEN_EQUAL)) {
     expression(); // Value expression comes before the SET
     emitBytes(OP_SET_PROPERTY, name);
+  } else if (match(TOKEN_LEFT_PAREN)) {
+    uint8_t argCount = argumentList();
+    emitBytes(OP_INVOKE, name);
+    emitByte(argCount);
   } else {
     emitBytes(OP_GET_PROPERTY, name);
   }
@@ -397,6 +418,14 @@ static void variable(bool canAssign) {
   namedVariable(parser.previous, canAssign);
 }
 
+static void this_(bool canAssign) {
+  if (currentClass == NULL) {
+    error("Cannot use 'this' outside of a class.");
+    return;
+  }
+  variable(false);
+}
+
 static void unary(bool canAssign) {
   TokenType operatorType = parser.previous.type;
 
@@ -451,7 +480,7 @@ ParseRule rules[] = {
     [TOKEN_PRINT] = {NULL, NULL, PREC_NONE},
     [TOKEN_RETURN] = {NULL, NULL, PREC_NONE},
     [TOKEN_SUPER] = {NULL, NULL, PREC_NONE},
-    [TOKEN_THIS] = {NULL, NULL, PREC_NONE},
+    [TOKEN_THIS] = {this_, NULL, PREC_NONE},
     [TOKEN_TRUE] = {literal, NULL, PREC_NONE},
     [TOKEN_VAR] = {NULL, NULL, PREC_NONE},
     [TOKEN_WHILE] = {NULL, NULL, PREC_NONE},
@@ -671,7 +700,12 @@ static void function(FunctionType type) {
 static void method() {
   consume(TOKEN_IDENTIFIER, "Expect method name.");
   uint8_t constant = identifierConstant(&parser.previous);
-  FunctionType type = FUNCTION_TYPE_FUNCTION;
+  FunctionType type = FUNCTION_TYPE_METHOD;
+
+  if (parser.previous.length == 4 &&
+      memcmp(parser.previous.start, "init", 4) == 0) {
+    type = FUNCTION_TYPE_INITIALIZER;
+  }
   function(type);
   emitBytes(OP_METHOD, constant);
 }
@@ -685,6 +719,10 @@ static void classDeclaration() {
   emitBytes(OP_CLASS, nameConstant);
   defineVariable(nameConstant);
 
+  ClassCompiler classCompiler;
+  classCompiler.enclosing = currentClass;
+  currentClass = &classCompiler;
+
   // Push the class to the top of the stack for binding methods
   namedVariable(className, false);
   consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
@@ -692,7 +730,8 @@ static void classDeclaration() {
     method();
   }
   consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
-  pop();
+  emitByte(OP_POP);
+  currentClass = currentClass->enclosing;
 }
 
 static void funDeclaration() {
@@ -800,6 +839,9 @@ static void returnStatement() {
   if (match(TOKEN_SEMICOLON)) {
     emitReturn();
   } else {
+    if (current->type == FUNCTION_TYPE_INITIALIZER) {
+      error("Cannot return a value from an initializer.");
+    }
     expression();
     consume(TOKEN_SEMICOLON, "Expect ';' after return value.");
     emitByte(OP_RETURN);
