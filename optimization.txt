@@ -1,0 +1,5 @@
+Hashtable lookup:
+14.87s -> 11.98s
+
+NaN boxing:
+16-byte value -> 8-byte value
