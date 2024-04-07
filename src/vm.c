@@ -402,6 +402,14 @@ static InterpretResult run() {
         push(value);         // Push value as the result of assignment
         break;
       }
+      case OP_GET_SUPER: {
+        ObjectString *name = READ_STRING();
+        ObjectClass *superclass = AS_CLASS(pop());
+        if (!bindMethod(superclass, name)) {
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        break;
+      }
       case OP_EQUAL: {
         Value b = pop();
         Value a = pop();
@@ -484,6 +492,16 @@ static InterpretResult run() {
         frame = &vm.frames[vm.frameCount - 1];
         break;
       }
+      case OP_SUPER_INVOKE: {
+        ObjectString *method = READ_STRING();
+        int argCount = READ_BYTE();
+        ObjectClass *superclass = AS_CLASS(pop());
+        if (!invokeFromClass(superclass, method, argCount)) {
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        frame = &vm.frames[vm.frameCount - 1];
+        break;
+      }
       case OP_CLOSURE: {
         ObjectFunction *function = AS_FUNCTION(READ_CONSTANT());
         ObjectClosure *closure = newClosure(function);
@@ -521,6 +539,17 @@ static InterpretResult run() {
       }
       case OP_CLASS: {
         push(CREATE_OBJECT_VALUE(newClass(READ_STRING())));
+        break;
+      }
+      case OP_INHERIT: {
+        Value superclass = peek(1);
+        if (!IS_CLASS(superclass)) {
+          runtimeError("Superclass must be a class.");
+          return INTERPRET_RUNTIME_ERROR;
+        }
+        ObjectClass *subclass = AS_CLASS(peek(0));
+        tableAddAll(&AS_CLASS(superclass)->methods, &subclass->methods);
+        pop(); // subclass;
         break;
       }
       case OP_METHOD: {
