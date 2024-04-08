@@ -74,7 +74,7 @@ child.sayBye();
 
 This example demonstrates class definition, object instantiation, method invocation, and inheritance in Mek#.
 
-Conclusion
+## Conclusion
 Mek# offers a dynamic and robust platform for software development, combining the best of OOP and functional programming. Whether you prefer interactive sessions or developing extensive applications, Mek# provides the necessary tools and flexibility to bring your ideas to life.
 
 
