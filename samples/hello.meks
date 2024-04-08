@@ -1,0 +1,23 @@
+class MyClass {
+    init() {
+        this.x = "Hello from Mek#";
+    }
+
+    sayHello() {
+        print(this.x);
+    }
+}
+
+// Create an object
+var obj = MyClass();
+obj.sayHello();
+
+// Using inheritance
+class ExtendedClass < MyClass {
+    sayBye() {
+        print("Goodbye from Mek#");
+    }
+}
+
+var child = ExtendedClass();
+child.sayBye();
