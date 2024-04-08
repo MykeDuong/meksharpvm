@@ -56,7 +56,10 @@ class MyClass {
 
 // Create an object
 var obj = MyClass();
-obj.sayHello();
+
+// Create a closure
+var closure = obj.sayHello;
+closure();
 
 // Using inheritance
 class ExtendedClass < MyClass {
